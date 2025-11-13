@@ -8,6 +8,7 @@ import { Shield, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
+import { apiUrl } from "@/lib/api";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -97,7 +98,7 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const resp = await fetch("/api/auth/register", {
+      const resp = await fetch(apiUrl("/api/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

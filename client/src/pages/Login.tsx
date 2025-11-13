@@ -7,6 +7,7 @@ import { Shield, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
+import { apiUrl } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -78,7 +79,7 @@ const Login = () => {
         body.twoFactorCode = twoFactorCode;
       }
 
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -136,7 +137,7 @@ const Login = () => {
 
   const handleResendVerification = async () => {
     try {
-      const response = await fetch("/api/auth/resend-verification", {
+      const response = await fetch(apiUrl("/api/auth/resend-verification"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -360,5 +361,4 @@ const Login = () => {
 };
 
 export default Login;
-
 

@@ -6,6 +6,7 @@ import { Shield, CheckCircle, XCircle, Loader2, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "@/components/ThemeToggle";
+import { apiUrl } from "@/lib/api";
 
 const VerifyEmail = () => {
   const [searchParams] = useSearchParams();
@@ -28,7 +29,7 @@ const VerifyEmail = () => {
 
   const verifyEmail = async () => {
     try {
-      const resp = await fetch("/api/auth/verify-email", {
+      const resp = await fetch(apiUrl("/api/auth/verify-email"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -59,7 +60,7 @@ const VerifyEmail = () => {
         return;
       }
 
-      const resp = await fetch("/api/auth/resend-verification", {
+      const resp = await fetch(apiUrl("/api/auth/resend-verification"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
