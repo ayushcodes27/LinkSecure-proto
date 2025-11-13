@@ -1,0 +1,43 @@
+
+> server@1.0.0 dev
+> ts-node-dev --respawn --transpile-only server.ts
+
+[INFO] 01:44:38 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
+[dotenv@17.2.2] injecting env (14) from .env -- tip: 📡 observe env with Radar: https://dotenvx.com/radar
+MongoDB connected
+Server running on http://localhost:5000
+[INFO] 01:45:09 Restarting: /home/ganesh/Desktop/linksecure-main. (Copy)/linksecure-main/server/services/fileStorage.ts has been modified
+[dotenv@17.2.2] injecting env (14) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+MongoDB connected
+Server running on http://localhost:5000
+📁 Processing 1 files upload:
+  📄 Processing file: solo_leveling.jpeg
+  📊 File size: 11465
+  🏷️ MIME type: image/jpeg
+🔍 Environment Variables Check:
+  STORAGE_TYPE: azure
+  AZURE_STORAGE_ACCOUNT_NAME: linksecurestorage
+  AZURE_STORAGE_ACCOUNT_KEY: IEowRl4pAx...
+  AZURE_STORAGE_CONTAINER_NAME: linksecure-files
+🔧 File Storage Configuration:
+  Storage Type: azure
+  Azure Config: Present
+🔧 Initializing Azure Blob Storage Client:
+  🏢 Account Name: linksecurestorage
+  📦 Container Name: linksecure-files
+  🔑 Account Key: IEowRl4pAx...
+✅ Azure Blob Storage Client initialized successfully
+🔍 Azure Upload Debug Info:
+  📦 Container Name: linksecure-files
+  📄 Blob Name: solo_leveling_1758140185096_33c54bd4.jpeg
+  🏷️ Original Name: solo_leveling.jpeg
+  📊 File Size: 11465 bytes
+  🔗 Account Name: linksecurestorage
+🔧 Creating container if not exists...
+✅ Container ready: linksecure-files
+📤 Uploading file to Azure...
+  🎯 Full Blob URL: https://linksecurestorage.blob.core.windows.net/linksecure-files/solo_leveling_1758140185096_33c54bd4.jpeg
+✅ File uploaded successfully!
+  🔗 File URL: https://linksecurestorage.blob.core.windows.net/linksecure-files/solo_leveling_1758140185096_33c54bd4.jpeg
+User info from request: { id: '68caec0207f85954d22d4e04', email: 'abc@gmail.com' }
+User ID: 68caec0207f85954d22d4e04
