@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import axios from 'axios';
 import LinkMapping from '../models/LinkMapping';
 import { getAzureSASService } from '../services/azureSASService';
 import { 
@@ -126,16 +127,26 @@ router.post('/create', async (req: Request, res: Response) => {
 
 /**
  * GET /s/:short_code
- * Redirect to Azure Blob Storage file using a time-limited SAS URL
+ * Proxy and stream Azure Blob Storage file to the user
+ * 
+ * This route securely proxies files from Azure, hiding the underlying storage URL
+ * and keeping the linksecure.onrender.com URL in the browser's address bar.
  * 
  * URL Parameters:
  * - short_code: 8-character alphanumeric identifier
  * 
  * Response:
- * - 302 Redirect: Temporary redirect to Azure SAS URL (valid for 60 seconds)
+ * - 200 OK: File stream with proper headers (Content-Disposition, Content-Type, Content-Length)
+ * - 400 Bad Request: Invalid short code format
  * - 404 Not Found: Short code doesn't exist
  * - 410 Gone: Link has expired
- * - 500 Internal Server Error: Server error
+ * - 500 Internal Server Error: Server error or streaming error
+ * 
+ * Security:
+ * - Azure SAS URL is generated server-side and never exposed to the client
+ * - File is streamed in chunks, not loaded into memory
+ * - Access count is tracked in the database
+ * - Original filename and MIME type are preserved from metadata
  */
 router.get('/:short_code', async (req: Request, res: Response) => {
   try {
@@ -221,24 +232,96 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       `);
     }
 
-    // Generate Azure SAS URL with 60-second expiry for immediate redirection
+    // Generate Azure SAS URL with 60-second expiry for internal use only
     const azureSAS = getAzureSASService();
     const sasUrl = await azureSAS.generateRedirectSASUrl(linkMapping.blob_path);
 
-    // Increment access count
-    await LinkMapping.incrementAccessCount(short_code);
-
-    console.log('✅ Redirecting to file:');
+    console.log('✅ Proxying file stream:');
     console.log(`  🔗 Short Code: ${short_code}`);
     console.log(`  📄 Blob Path: ${linkMapping.blob_path}`);
     console.log(`  📊 Access Count: ${linkMapping.access_count + 1}`);
-    console.log(`  ⏱️  SAS Expiry: 60 seconds`);
+    console.log(`  🔒 Azure URL hidden from client`);
 
-    // Send temporary redirect (302) to the Azure SAS URL
-    return res.redirect(302, sasUrl);
+    // Fetch the file from Azure as a stream
+    const azureResponse = await axios.get(sasUrl, {
+      responseType: 'stream',
+      validateStatus: (status) => status < 500 // Accept all non-server-error responses
+    });
+
+    // Check if Azure returned an error
+    if (azureResponse.status !== 200) {
+      console.error(`❌ Azure returned status ${azureResponse.status} for blob: ${linkMapping.blob_path}`);
+      return res.status(azureResponse.status).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>File Error - LinkSecure</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+            h1 { color: #e74c3c; }
+            p { color: #555; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>❌ File Error</h1>
+            <p>The file could not be retrieved from storage.</p>
+            <p><small>Error Code: ${azureResponse.status}</small></p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Extract file metadata from link mapping
+    const originalFileName = linkMapping.metadata?.original_file_name || 'download';
+    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
+    const fileSize = linkMapping.metadata?.file_size;
+
+    // Set response headers for file download
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${originalFileName}"`);
+    
+    if (fileSize) {
+      res.setHeader('Content-Length', fileSize.toString());
+    }
+
+    // Additional security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // Increment access count before streaming
+    await LinkMapping.incrementAccessCount(short_code);
+
+    console.log(`📥 Streaming file: ${originalFileName} (${mimeType}, ${fileSize ? `${fileSize} bytes` : 'size unknown'})`);
+
+    // Pipe the Azure stream directly to the response
+    // This streams the file chunk-by-chunk, keeping the LinkSecure URL in the browser
+    azureResponse.data.pipe(res);
+
+    // Handle stream errors
+    azureResponse.data.on('error', (streamError: Error) => {
+      console.error('❌ Error during file streaming:', streamError);
+      // If headers haven't been sent yet, send error response
+      if (!res.headersSent) {
+        res.status(500).send('Error streaming file');
+      }
+    });
+
+    res.on('error', (responseError: Error) => {
+      console.error('❌ Error on response stream:', responseError);
+    });
+
+    // Log when streaming completes
+    res.on('finish', () => {
+      console.log(`✅ File streamed successfully: ${short_code}`);
+    });
 
   } catch (error) {
-    console.error('❌ Error processing redirect:', error);
+    console.error('❌ Error processing file proxy:', error);
     return res.status(500).send(`
       <!DOCTYPE html>
       <html>
