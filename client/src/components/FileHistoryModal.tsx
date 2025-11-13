@@ -64,7 +64,7 @@ export const FileHistoryModal = ({ isOpen, onClose, fileId, fileName }: FileHist
     
     setLoading(true);
     try {
-      const response = await fetch(`apiUrl('/api/files/${fileId}/history`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/history`), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
