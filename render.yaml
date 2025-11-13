@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: linksecure-backend
+    runtime: node
+    rootDir: server
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+    # Add your environment variables in Render Dashboard:
+    # - MONGO_URI
+    # - JWT_SECRET
+    # - AZURE_STORAGE_ACCOUNT_NAME
+    # - AZURE_STORAGE_ACCOUNT_KEY
+    # - AZURE_STORAGE_CONTAINER_NAME
+    # - BASE_URL (set to https://linksecure.onrender.com)
+    # - SMTP credentials if using email
