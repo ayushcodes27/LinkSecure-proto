@@ -54,6 +54,6 @@ const AccessRequestSchema = new Schema<IAccessRequest>(
 // Index for efficient querying of pending requests for a file
 AccessRequestSchema.index({ fileId: 1, status: 1 });
 
-const AccessRequest: Model<IAccessRequest> = mongoose.models.AccessRequest || mongoose.model<IAccessRequest>('AccessRequest', AccessRequestSchema);
+const AccessRequest = mongoose.model<IAccessRequest>('AccessRequest', AccessRequestSchema);
 
 export default AccessRequest;

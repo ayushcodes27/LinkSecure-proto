@@ -44,5 +44,5 @@ FileAccessSchema.index({ fileId: 1, userId: 1 }, { unique: true });
 FileAccessSchema.index({ userId: 1, isActive: 1 });
 FileAccessSchema.index({ fileId: 1, isActive: 1 });
 
-const FileAccessModel = mongoose.models.FileAccess || mongoose.model<IFileAccess>("FileAccess", FileAccessSchema);
+const FileAccessModel = mongoose.model<IFileAccess>("FileAccess", FileAccessSchema);
 export default FileAccessModel;

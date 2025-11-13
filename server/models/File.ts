@@ -208,5 +208,5 @@ FileSchema.index({ uploadedBy: 1, createdAt: -1 });
 FileSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 FileSchema.index({ isDeleted: 1, deletedAt: 1 });
 
-const FileModel = (mongoose.models.File || mongoose.model<IFile, IFileModel>("File", FileSchema)) as IFileModel;
+const FileModel = mongoose.model<IFile, IFileModel>("File", FileSchema);
 export default FileModel;

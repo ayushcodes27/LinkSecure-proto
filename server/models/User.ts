@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, Schema, Model } from "mongoose";
 
 export interface IUser extends Document {
   firstName: string;
@@ -85,7 +85,9 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-const UserModel = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+export interface IUserModel extends Model<IUser> {}
+
+const UserModel = (mongoose.models.User || mongoose.model<IUser, IUserModel>("User", UserSchema)) as IUserModel;
 export default UserModel;
 
 

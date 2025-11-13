@@ -180,5 +180,5 @@ SecureLinkSchema.index({ fileId: 1, createdBy: 1 });
 SecureLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 SecureLinkSchema.index({ isActive: 1, expiresAt: 1 });
 
-const SecureLinkModel = (mongoose.models.SecureLink || mongoose.model<ISecureLink, ISecureLinkModel>("SecureLink", SecureLinkSchema)) as ISecureLinkModel;
+const SecureLinkModel = mongoose.model<ISecureLink, ISecureLinkModel>("SecureLink", SecureLinkSchema);
 export default SecureLinkModel;

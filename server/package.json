@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
-    "build": "tsc",
+    "build": "tsc --skipLibCheck",
     "start": "node dist/server.js",
     "cleanup:trash": "node scripts/cleanupTrash.js",
     "test:email": "node scripts/test-email-service.js"

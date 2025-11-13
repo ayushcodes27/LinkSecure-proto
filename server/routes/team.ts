@@ -271,12 +271,12 @@ router.get('/members', async (req: Request, res: Response, next: NextFunction) =
       const owner = await User.findById(file.uploadedBy).select('firstName lastName email');
       if (owner) {
         members.unshift({
-          userId: owner._id,
+          userId: owner._id as any,
           firstName: owner.firstName,
           lastName: owner.lastName,
           email: owner.email,
           accessLevel: 'admin',
-          grantedBy: null,
+          grantedBy: null as any,
           grantedAt: file.createdAt,
           lastAccessedAt: file.lastAccessedAt,
           accessHistory: file.accessHistory
