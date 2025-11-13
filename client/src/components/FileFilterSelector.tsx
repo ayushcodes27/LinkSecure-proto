@@ -35,7 +35,7 @@ export const FileFilterSelector = ({ value, onChange, className }: FileFilterSel
   const loadFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('apiUrl('/api/files/my-files')', {
+      const response = await fetch(apiUrl('/api/files/my-files'), {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
