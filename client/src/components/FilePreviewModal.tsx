@@ -81,9 +81,9 @@ export const FilePreviewModal = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`apiUrl('/api/files/${file.fileId}/download`, {
+      const response = await fetch(apiUrl(`/api/files/${file.fileId}/download`), {
         headers: {
-          ')'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
