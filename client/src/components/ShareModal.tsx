@@ -541,7 +541,11 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
                 toast({ title: "Password required", description: "Enter a password to enable protection.", variant: "destructive" });
                 return;
               }
-              await generateSecureLink();
+              if (shareSettings.useShortLink) {
+                await generateShortLink();
+              } else {
+                await generateSecureLink();
+              }
             }}
             disabled={isGenerating}
           >
