@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Upload, FileText, X, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api";
 
 interface FileWithProgress {
   file: File;
@@ -88,7 +89,7 @@ export const FileUploadZone = ({ onUploadComplete }: FileUploadZoneProps) => {
 
     console.log('Uploading file with token:', token.substring(0, 20) + '...');
 
-    const response = await fetch('http://localhost:5000/api/files/upload-multiple', {
+    const response = await fetch(apiUrl('/api/files/upload-multiple'), {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

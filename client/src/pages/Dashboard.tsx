@@ -47,6 +47,7 @@ import { useToast } from "@/hooks/use-toast";
 import SkeletonLoader from "@/components/SkeletonLoader";
 import AnimatedCounter from "@/components/AnimatedCounter";
 import ThemeToggle from "@/components/ThemeToggle";
+import { apiUrl } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,7 +138,7 @@ const Dashboard = () => {
     if (!token) return;
     
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings', {
+      const response = await fetch(apiUrl('/api/user/settings'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ const Dashboard = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/files/my-files', {
+      const response = await fetch(apiUrl('/api/files/my-files'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -196,7 +197,7 @@ const Dashboard = () => {
     if (!token) return;
 
     try {
-      const response = await fetch('http://localhost:5000/api/files/history/my-activity', {
+      const response = await fetch(apiUrl('/api/files/history/my-activity'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -225,7 +226,7 @@ const Dashboard = () => {
 
     setLinksLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/files/secure-links', {
+      const response = await fetch(apiUrl('/api/files/secure-links'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -267,7 +268,7 @@ const Dashboard = () => {
     if (!token) return;
     setTrashLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/files/trash/list', {
+      const response = await fetch(apiUrl('/api/files/trash/list'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -292,7 +293,7 @@ const Dashboard = () => {
     if (!token) return;
     
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings', {
+      const response = await fetch(apiUrl('/api/user/settings'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -320,7 +321,7 @@ const Dashboard = () => {
   const handleRestore = async (fileId: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/restore`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/restore`), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -338,7 +339,7 @@ const Dashboard = () => {
     if (!token) return;
     if (!confirm('Permanently delete this file? This cannot be undone.')) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/permanent`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/permanent`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -357,7 +358,7 @@ const Dashboard = () => {
 
     setSyncing(true);
     try {
-      const response = await fetch('http://localhost:5000/api/files/sync/azure', {
+      const response = await fetch(apiUrl('/api/files/sync/azure'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -393,7 +394,7 @@ const Dashboard = () => {
     if (!token) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/download`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/download`), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -435,7 +436,7 @@ const Dashboard = () => {
     if (!token) return;
     if (!confirm(`Move "${fileName}" to Trash?`)) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}`), {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

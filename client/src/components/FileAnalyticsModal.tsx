@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiUrl } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -55,9 +56,9 @@ export const FileAnalyticsModal = ({ isOpen, onClose, fileId }: FileAnalyticsMod
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/analytics`, {
+      const response = await fetch(`apiUrl('/api/files/${fileId}/analytics`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          ')'Authorization': `Bearer ${token}`
         }
       });
 

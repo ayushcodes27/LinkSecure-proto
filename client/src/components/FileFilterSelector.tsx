@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { apiUrl } from '@/lib/api';
 import { FileText, Loader2 } from "lucide-react";
 import {
   Select,
@@ -34,7 +35,7 @@ export const FileFilterSelector = ({ value, onChange, className }: FileFilterSel
   const loadFiles = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/files/my-files', {
+      const response = await fetch('apiUrl('/api/files/my-files')', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 

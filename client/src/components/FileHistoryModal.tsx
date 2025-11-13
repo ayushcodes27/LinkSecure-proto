@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiUrl } from '@/lib/api';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,9 +64,9 @@ export const FileHistoryModal = ({ isOpen, onClose, fileId, fileName }: FileHist
     
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/history`, {
+      const response = await fetch(`apiUrl('/api/files/${fileId}/history`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          ')'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiUrl } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -54,8 +55,8 @@ export const AnalyticsChart = () => {
         params.append('endDate', customDateRange.to.toISOString());
       }
 
-      const response = await fetch(`http://localhost:5000/api/files/analytics/dashboard?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`apiUrl('/api/files/analytics/dashboard?${params.toString()}`, {
+        headers: { ')'Authorization': `Bearer ${token}` }
       });
       if (!response.ok) throw new Error('Failed to load analytics');
       const data = await response.json();

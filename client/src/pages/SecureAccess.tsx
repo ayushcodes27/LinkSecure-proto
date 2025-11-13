@@ -16,6 +16,7 @@ import {
   Archive
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api";
 
 interface SecureFileInfo {
   fileName: string;
@@ -57,7 +58,7 @@ const SecureAccess = () => {
 
   const fetchFileInfo = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/secure/${token}/info`);
+      const response = await fetch(apiUrl(`/api/secure/${token}/info`));
       
       if (response.ok) {
         const result = await response.json();
@@ -97,7 +98,7 @@ const SecureAccess = () => {
         }
       }
 
-      const response = await fetch(`http://localhost:5000/api/secure/${token}/download`, {
+      const response = await fetch(apiUrl(`/api/secure/${token}/download`), {
         headers: {
           ...(fileInfo?.policies?.requireEmail ? { 'x-visitor-email': email } : {}),
           ...(fileInfo?.policies?.passwordProtected && password ? { 'x-secure-password': password } : {}),
@@ -150,7 +151,7 @@ const SecureAccess = () => {
         }
       }
 
-      const response = await fetch(`http://localhost:5000/api/secure/${token}`, {
+      const response = await fetch(apiUrl(`/api/secure/${token}`), {
         headers: {
           ...(fileInfo?.policies?.requireEmail ? { 'x-visitor-email': email } : {}),
           ...(fileInfo?.policies?.passwordProtected && password ? { 'x-secure-password': password } : {}),

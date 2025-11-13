@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { apiUrl } from '@/lib/api';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +81,9 @@ export const FilePreviewModal = ({
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${file.fileId}/download`, {
+      const response = await fetch(`apiUrl('/api/files/${file.fileId}/download`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          ')'Authorization': `Bearer ${token}`
         }
       });
 

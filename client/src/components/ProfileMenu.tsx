@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { apiUrl } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, Shield, HardDrive, Lock, LogOut, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { apiUrl } from '@/lib/api';
 
 interface Notification {
   _id: string;
@@ -65,7 +66,7 @@ export const NotificationCenter = () => {
   const fetchUnreadCount = async () => {
     if (!token) return;
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/unread-count', {
+      const response = await fetch(apiUrl('/api/notifications/unread-count'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -81,7 +82,7 @@ export const NotificationCenter = () => {
     if (!token) return;
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/notifications?limit=20', {
+      const response = await fetch(apiUrl('/api/notifications?limit=20'), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -104,7 +105,7 @@ export const NotificationCenter = () => {
   const markAsRead = async (notificationId: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/read`, {
+      const response = await fetch(apiUrl(`/api/notifications/${notificationId}/read`), {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -122,7 +123,7 @@ export const NotificationCenter = () => {
   const markAllAsRead = async () => {
     if (!token) return;
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/mark-all-read', {
+      const response = await fetch(apiUrl('/api/notifications/mark-all-read'), {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -142,7 +143,7 @@ export const NotificationCenter = () => {
   const deleteNotification = async (notificationId: string) => {
     if (!token) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}`, {
+      const response = await fetch(apiUrl(`/api/notifications/${notificationId}`), {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });

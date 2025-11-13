@@ -15,6 +15,7 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiUrl } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -133,7 +134,7 @@ const Settings = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings', {
+      const response = await fetch(apiUrl('/api/user/settings'), {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -159,7 +160,7 @@ const Settings = () => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings/profile', {
+      const response = await fetch(apiUrl('/api/user/settings/profile'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -211,7 +212,7 @@ const Settings = () => {
 
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings/password', {
+      const response = await fetch(apiUrl('/api/user/settings/password'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -247,7 +248,7 @@ const Settings = () => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings/notifications', {
+      const response = await fetch(apiUrl('/api/user/settings/notifications'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -279,7 +280,7 @@ const Settings = () => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings/privacy', {
+      const response = await fetch(apiUrl('/api/user/settings/privacy'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -311,7 +312,7 @@ const Settings = () => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/settings/appearance', {
+      const response = await fetch(apiUrl('/api/user/settings/appearance'), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -350,7 +351,7 @@ const Settings = () => {
 
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/storage/clear-trash', {
+      const response = await fetch(apiUrl('/api/user/storage/clear-trash'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -380,7 +381,7 @@ const Settings = () => {
     if (!token) return;
     setSaving(true);
     try {
-      const response = await fetch('http://localhost:5000/api/user/account', {
+      const response = await fetch(apiUrl('/api/user/account'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -495,7 +496,7 @@ const Settings = () => {
                     <div className="relative">
                       {settings?.user.profileImage ? (
                         <img
-                          src={`http://localhost:5000${settings.user.profileImage}`}
+                          src={apiUrl(settings.user.profileImage)}
                           alt="Profile"
                           className="h-20 w-20 rounded-full object-cover border-2 border-primary"
                         />
@@ -520,7 +521,7 @@ const Settings = () => {
 
                           setSaving(true);
                           try {
-                            const response = await fetch('http://localhost:5000/api/user/settings/profile-image', {
+                            const response = await fetch(apiUrl('/api/user/settings/profile-image'), {
                               method: 'POST',
                               headers: { Authorization: `Bearer ${token}` },
                               body: formData
@@ -573,7 +574,7 @@ const Settings = () => {
                             if (!confirm('Remove profile image?')) return;
                             setSaving(true);
                             try {
-                              const response = await fetch('http://localhost:5000/api/user/settings/profile-image', {
+                              const response = await fetch(apiUrl('/api/user/settings/profile-image'), {
                                 method: 'DELETE',
                                 headers: { Authorization: `Bearer ${token}` }
                               });

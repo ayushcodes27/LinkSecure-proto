@@ -28,6 +28,7 @@ import {
   Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiUrl } from "@/lib/api";
 import QRCode from "qrcode";
 
 interface SecureLink {
@@ -79,7 +80,7 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
     
     setLinksLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/files/secure-links', {
+      const response = await fetch(apiUrl('/api/files/secure-links'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -122,7 +123,7 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
     
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/generate-link`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/generate-link`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -198,7 +199,7 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
     if (!token) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/files/secure-links/${linkId}`, {
+      const response = await fetch(apiUrl(`/api/files/secure-links/${linkId}`), {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
