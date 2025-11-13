@@ -18,6 +18,8 @@ interface ShareModalProps {
 }
 
 export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProps) => {
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  
   const [shareSettings, setShareSettings] = useState({
     passwordProtected: false,
     password: "",
@@ -63,7 +65,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
 
     setIsGenerating(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${fileId}/generate-link`, {
+      const response = await fetch(`${API_URL}/api/files/${fileId}/generate-link`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -118,7 +120,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
     setIsGenerating(true);
     try {
       // First get the file details to get the blob path
-      const fileResponse = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+      const fileResponse = await fetch(`${API_URL}/api/files/${fileId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -128,7 +130,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
       const blobPath = fileData.data?.blobName || fileData.data?.fileName;
 
       // Generate short link
-      const response = await fetch(`http://localhost:5000/api/v1/links/create`, {
+      const response = await fetch(`${API_URL}/api/v1/links/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
