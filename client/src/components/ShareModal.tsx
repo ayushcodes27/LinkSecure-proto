@@ -67,7 +67,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
 
     setIsGenerating(true);
     try {
-      const response = await fetch(`${API_URL}/api/files/${fileId}/generate-link`, {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/generate-link`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -80,7 +80,8 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
           password: shareSettings.passwordProtected ? shareSettings.password : undefined,
           requireEmail: shareSettings.requireEmail,
           allowPreview: shareSettings.allowPreview,
-          watermarkEnabled: shareSettings.watermarkEnabled
+          watermarkEnabled: shareSettings.watermarkEnabled,
+          useShortLink: false // Explicitly request Azure SAS link
         }),
       });
 
@@ -123,38 +124,28 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
 
     setIsGenerating(true);
     try {
-      // First get the file details to get the blob path
-      const fileResponse = await fetch(`${API_URL}/api/files/${fileId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (!fileResponse.ok) throw new Error('Failed to fetch file details');
-      
-      const fileData = await fileResponse.json();
-      const blobPath = fileData.data?.blobName || fileData.data?.fileName;
-
-      // Generate short link
-      const response = await fetch(`${API_URL}/api/v1/links/create`, {
+      // Use the unified generate-link endpoint with useShortLink flag
+      const response = await fetch(apiUrl(`/api/files/${fileId}/generate-link`), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          owner_id: localStorage.getItem('userId') || 'anonymous',
-          blob_path: blobPath,
-          expiry_minutes: parseInt(shareSettings.expirationHours) * 60,
-          metadata: {
-            original_file_name: fileName,
-            file_size: fileData.data?.fileSize || 0,
-            mime_type: fileData.data?.mimeType || 'application/octet-stream'
-          }
+          expiresInHours: parseInt(shareSettings.expirationHours),
+          useShortLink: true,
+          // Other settings (not applicable to short links, but included for consistency)
+          maxAccessCount: shareSettings.downloadLimit ? parseInt(shareSettings.maxDownloads) : undefined,
+          password: shareSettings.passwordProtected ? shareSettings.password : undefined,
+          requireEmail: shareSettings.requireEmail,
+          allowPreview: shareSettings.allowPreview,
+          watermarkEnabled: shareSettings.watermarkEnabled
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setShareLink(result.link);
+        setShareLink(result.data.secureUrl);
         setLinkGenerated(true);
         setQrDataUrl("");
         toast({

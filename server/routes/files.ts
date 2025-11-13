@@ -1176,13 +1176,80 @@ router.post('/sync/azure', async (req: Request, res: Response, next: NextFunctio
 
 // ==================== SECURE LINK ENDPOINTS ====================
 
-// Generate secure link for a file
+// Generate secure link for a file (supports both short links and Azure SAS links)
 router.post('/:fileId/generate-link', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { fileId } = req.params;
     const userId = (req as any).user.id;
-    const { expiresInHours, maxAccessCount, useTrackingPage, password, requireEmail, allowPreview, watermarkEnabled } = req.body;
+    const { 
+      expiresInHours, 
+      maxAccessCount, 
+      useTrackingPage, 
+      password, 
+      requireEmail, 
+      allowPreview, 
+      watermarkEnabled,
+      useShortLink = true // Default to short links
+    } = req.body;
 
+    // If short link requested, delegate to short link creation endpoint
+    if (useShortLink) {
+      // Import at runtime to avoid circular dependencies
+      const LinkMapping = (await import('../models/LinkMapping')).default;
+      const { generateUniqueShortCode } = await import('../services/linkUtils');
+      const FileModel = (await import('../models/File')).default;
+
+      // Find the file and verify ownership
+      const file = await FileModel.findOne({ 
+        fileId, 
+        uploadedBy: userId 
+      });
+
+      if (!file) {
+        return res.status(404).json({
+          success: false,
+          message: 'File not found or you do not have permission'
+        });
+      }
+
+      // Generate unique short code
+      const shortCode = await generateUniqueShortCode();
+      
+      // Calculate expiration
+      const expiryMinutes = expiresInHours ? parseInt(expiresInHours) * 60 : 24 * 60;
+      const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+
+      // Create link mapping
+      const linkMapping = await LinkMapping.create({
+        short_code: shortCode,
+        blob_path: file.blobName || file.fileName,
+        owner_id: userId,
+        expires_at: expiresAt,
+        metadata: {
+          original_file_name: file.originalName,
+          file_size: file.fileSize,
+          mime_type: file.mimeType
+        }
+      });
+
+      const baseUrl = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:5000';
+      const shortLink = `${baseUrl}/s/${shortCode}`;
+
+      return res.status(201).json({
+        success: true,
+        message: 'Short link generated successfully',
+        data: {
+          linkId: linkMapping.id,
+          secureUrl: shortLink,
+          shortCode: shortCode,
+          expiresAt: expiresAt,
+          fileName: file.fileName,
+          originalName: file.originalName
+        }
+      });
+    }
+
+    // Otherwise, generate traditional Azure SAS link
     const secureLink = await SecureLinkService.generateSecureLink({
       fileId,
       createdBy: userId,
