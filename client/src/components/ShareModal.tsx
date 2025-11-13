@@ -55,6 +55,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
   };
 
   const generateSecureLink = async () => {
+    console.log('🔗 generateSecureLink called - generating Azure SAS link');
     if (!token) {
       toast({
         title: "Authentication required",
@@ -109,6 +110,8 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
   };
 
   const generateShortLink = async () => {
+    console.log('✨ generateShortLink called - generating short LinkSecure URL');
+    console.log('Toggle state useShortLink:', shareSettings.useShortLink);
     if (!token) {
       toast({
         title: "Authentication required",
