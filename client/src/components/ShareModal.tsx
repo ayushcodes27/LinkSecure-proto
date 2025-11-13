@@ -31,7 +31,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
     allowPreview: true,
     requireEmail: false,
     useTrackingPage: false, // Default to direct Azure link; will auto-switch when policies require it
-    useShortLink: false, // New: Toggle for short LinkSecure URL
+    useShortLink: true, // Default to short LinkSecure URLs (cleaner, trackable, secure)
   });
   
   const [shareLink, setShareLink] = useState("");
