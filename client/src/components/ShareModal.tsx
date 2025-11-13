@@ -29,6 +29,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
     allowPreview: true,
     requireEmail: false,
     useTrackingPage: false, // Default to direct Azure link; will auto-switch when policies require it
+    useShortLink: false, // New: Toggle for short LinkSecure URL
   });
   
   const [shareLink, setShareLink] = useState("");
@@ -104,6 +105,72 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
     }
   };
 
+  const generateShortLink = async () => {
+    if (!token) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to generate short links.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // First get the file details to get the blob path
+      const fileResponse = await fetch(`http://localhost:5000/api/files/${fileId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!fileResponse.ok) throw new Error('Failed to fetch file details');
+      
+      const fileData = await fileResponse.json();
+      const blobPath = fileData.data?.blobName || fileData.data?.fileName;
+
+      // Generate short link
+      const response = await fetch(`http://localhost:5000/api/v1/links/create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          owner_id: localStorage.getItem('userId') || 'anonymous',
+          blob_path: blobPath,
+          expiry_minutes: parseInt(shareSettings.expirationHours) * 60,
+          metadata: {
+            original_file_name: fileName,
+            file_size: fileData.data?.fileSize || 0,
+            mime_type: fileData.data?.mimeType || 'application/octet-stream'
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setShareLink(result.link);
+        setLinkGenerated(true);
+        setQrDataUrl("");
+        toast({
+          title: "Success",
+          description: "Short LinkSecure URL generated successfully!",
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to generate short link');
+      }
+    } catch (error) {
+      console.error('Error generating short link:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate short link",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleUpdateSetting = (key: string, value: any) => {
     setShareSettings(prev => ({ ...prev, [key]: value }));
   };
@@ -156,12 +223,41 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Link Type Selection */}
+          <Card className="bg-gradient-card border-0 shadow-soft">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="short-link" className="text-base font-medium">
+                    Use Short LinkSecure URL
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Generate a short, memorable link (e.g., linksecure.com/s/abc123)
+                  </p>
+                </div>
+                <Switch
+                  id="short-link"
+                  checked={shareSettings.useShortLink}
+                  onCheckedChange={(checked) => {
+                    handleUpdateSetting('useShortLink', checked);
+                    setLinkGenerated(false);
+                    setShareLink("");
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Share Link */}
           <Card className="bg-gradient-card border-0 shadow-soft">
             <CardHeader>
-              <CardTitle className="text-lg">Azure Secure Link</CardTitle>
+              <CardTitle className="text-lg">
+                {shareSettings.useShortLink ? 'Short LinkSecure URL' : 'Azure Secure Link'}
+              </CardTitle>
               <CardDescription>
-                Generate a secure, time-limited Azure SAS link for sharing your file
+                {shareSettings.useShortLink 
+                  ? 'Generate a short, easy-to-share LinkSecure URL that redirects to your Azure file'
+                  : 'Generate a secure, time-limited Azure SAS link for sharing your file'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -169,22 +265,24 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
                 <div className="space-y-4">
                   <div className="text-center py-4">
                     <p className="text-muted-foreground mb-4">
-                      Click the button below to generate a secure Azure link that works on any device
+                      {shareSettings.useShortLink
+                        ? 'Click to generate a short LinkSecure URL that works on any device'
+                        : 'Click to generate a secure Azure link that works on any device'}
                     </p>
                     <Button 
-                      onClick={generateSecureLink}
+                      onClick={shareSettings.useShortLink ? generateShortLink : generateSecureLink}
                       disabled={isGenerating}
                       className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
                     >
                       {isGenerating ? (
                         <>
                           <Droplets className="h-4 w-4 mr-2 animate-spin" />
-                          Generating Azure Link...
+                          {shareSettings.useShortLink ? 'Generating Short Link...' : 'Generating Azure Link...'}
                         </>
                       ) : (
                         <>
                           <Share2 className="h-4 w-4 mr-2" />
-                          Generate Secure Azure Link
+                          {shareSettings.useShortLink ? 'Generate Short Link' : 'Generate Secure Azure Link'}
                         </>
                       )}
                     </Button>
