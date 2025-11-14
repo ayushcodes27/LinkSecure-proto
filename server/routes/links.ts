@@ -365,10 +365,28 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       const downloadToken = req.query.token as string;
 
       if (!downloadToken) {
-        // No token provided - redirect to frontend password page
+        // No token provided - check if this is an API request or browser navigation
         console.warn(`⚠️  Password-protected link accessed without token: ${short_code}`);
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-        return res.redirect(`${frontendUrl}/s/${short_code}`);
+        
+        const acceptHeader = req.headers.accept || '';
+        const isApiRequest = acceptHeader.includes('application/json') || req.headers['x-requested-with'];
+        
+        if (isApiRequest) {
+          // API request - return JSON response
+          console.log(`🔄 Returning JSON response for API request`);
+          return res.status(401).json({
+            success: false,
+            error: 'Unauthorized',
+            message: 'Password required',
+            requiresPassword: true,
+            fileName: linkMapping.metadata?.original_file_name || 'Protected File'
+          });
+        } else {
+          // Browser navigation - redirect to frontend
+          console.log(`🔄 Redirecting to frontend password page`);
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+          return res.redirect(`${frontendUrl}/s/${short_code}`);
+        }
       }
 
       // Verify JWT token

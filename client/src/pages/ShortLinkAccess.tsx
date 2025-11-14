@@ -44,6 +44,15 @@ const ShortLinkAccess = () => {
         redirect: 'manual' // Don't follow redirects
       });
 
+      if (response.status === 401) {
+        // Password required
+        const data = await response.json();
+        setRequiresPassword(true);
+        setFileName(data.fileName || 'Protected File');
+        setLoading(false);
+        return;
+      }
+
       if (response.type === 'opaqueredirect' || response.status === 0) {
         // Backend tried to redirect - this means password is required
         setRequiresPassword(true);
