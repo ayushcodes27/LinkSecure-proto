@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import SecureAccess from "./pages/SecureAccess";
+import ShortLinkAccess from "./pages/ShortLinkAccess";
 import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
@@ -43,6 +44,7 @@ const App = () => (
               } 
             />
             <Route path="/secure/:token" element={<SecureAccess />} />
+            <Route path="/s/:shortCode" element={<ShortLinkAccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
