@@ -45,6 +45,7 @@ const App = () => (
             />
             <Route path="/secure/:token" element={<SecureAccess />} />
             <Route path="/s/:shortCode" element={<ShortLinkAccess />} />
+            <Route path="/password/:shortCode" element={<ShortLinkAccess />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
