@@ -27,8 +27,10 @@ const ShortLinkAccess = () => {
   const [passwordError, setPasswordError] = useState<string>("");
 
   useEffect(() => {
-    // Try to access the file immediately
-    attemptAccess();
+    // If we're on this page, assume password is required
+    // (backend redirected us here)
+    setRequiresPassword(true);
+    setFileName('Protected File');
   }, [shortCode]);
 
   const attemptAccess = async () => {
@@ -38,38 +40,23 @@ const ShortLinkAccess = () => {
     setError(null);
 
     try {
-      const response = await fetch(apiUrl(`/s/${shortCode}`), {
-        method: 'GET',
-        redirect: 'manual' // Don't auto-follow redirects
+      // Get the backend URL directly (not through apiUrl wrapper)
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/s/${shortCode}`, {
+        method: 'GET'
       });
 
       if (response.ok) {
-        // File is not password protected, download directly
+        // This shouldn't happen if we're on this page, but handle it anyway
         const blob = await response.blob();
         const contentDisposition = response.headers.get('content-disposition');
         const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'download';
         
         downloadBlob(blob, filename);
-      } else if (response.status === 401) {
-        // Password required
-        const data = await response.json();
-        if (data.requiresPassword) {
-          setRequiresPassword(true);
-          setFileName(data.fileName || 'File');
-        } else {
-          setError(data.message || 'Unauthorized access');
-        }
-      } else if (response.status === 404) {
-        const data = await response.json();
-        setError(data.message || 'Link not found or expired');
-      } else {
-        const data = await response.json();
-        setError(data.message || 'Failed to access file');
       }
+      setLoading(false);
     } catch (err) {
       console.error('Error accessing file:', err);
-      setError('Failed to access file. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -101,7 +88,8 @@ const ShortLinkAccess = () => {
       setRequiresPassword(false);
 
       // Step 2: Download file with token
-      const downloadResponse = await fetch(apiUrl(`/s/${shortCode}?token=${token}`), {
+      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const downloadResponse = await fetch(`${backendUrl}/s/${shortCode}?token=${token}`, {
         method: 'GET',
       });
 
