@@ -27,10 +27,7 @@ const ShortLinkAccess = () => {
   const [passwordError, setPasswordError] = useState<string>("");
 
   useEffect(() => {
-    // If we're on this page, assume password is required
-    // (backend redirected us here)
-    setRequiresPassword(true);
-    setFileName('Protected File');
+    attemptAccess();
   }, [shortCode]);
 
   const attemptAccess = async () => {
@@ -40,23 +37,60 @@ const ShortLinkAccess = () => {
     setError(null);
 
     try {
-      // Get the backend URL directly (not through apiUrl wrapper)
+      // Try to access the file directly from backend
       const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${backendUrl}/s/${shortCode}`, {
-        method: 'GET'
+        method: 'GET',
+        redirect: 'manual' // Don't follow redirects
       });
 
+      if (response.type === 'opaqueredirect' || response.status === 0) {
+        // Backend tried to redirect - this means password is required
+        setRequiresPassword(true);
+        setFileName('Protected File');
+        setLoading(false);
+        return;
+      }
+
       if (response.ok) {
-        // This shouldn't happen if we're on this page, but handle it anyway
+        // No password required - download directly
         const blob = await response.blob();
         const contentDisposition = response.headers.get('content-disposition');
         const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'download';
         
         downloadBlob(blob, filename);
+        
+        toast({
+          title: "Success",
+          description: "File downloaded successfully",
+        });
+        
+        setLoading(false);
+      } else if (response.status === 404) {
+        setError('File not found or link has expired');
+        setLoading(false);
+      } else if (response.status === 410) {
+        setError('This link has expired');
+        setLoading(false);
+      } else {
+        // Check if response is JSON (error) or if password is required
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/json')) {
+          const data = await response.json();
+          if (data.requiresPassword) {
+            setRequiresPassword(true);
+            setFileName(data.fileName || 'Protected File');
+          } else {
+            setError(data.message || 'Failed to access file');
+          }
+        } else {
+          setError('Failed to access file');
+        }
+        setLoading(false);
       }
-      setLoading(false);
     } catch (err) {
       console.error('Error accessing file:', err);
+      setError('Failed to connect to server');
       setLoading(false);
     }
   };
