@@ -360,14 +360,10 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       const downloadToken = req.query.token as string;
 
       if (!downloadToken) {
-        // No token provided - return 401 with requiresPassword flag
+        // No token provided - redirect to frontend password page
         console.warn(`⚠️  Password-protected link accessed without token: ${short_code}`);
-        return res.status(401).json({
-          success: false,
-          error: 'Unauthorized',
-          message: 'This link is password-protected',
-          requiresPassword: true
-        });
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+        return res.redirect(`${frontendUrl}/s/${short_code}`);
       }
 
       // Verify JWT token
