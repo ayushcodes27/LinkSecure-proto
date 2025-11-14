@@ -383,9 +383,10 @@ router.get('/:short_code', async (req: Request, res: Response) => {
           });
         } else {
           // Browser navigation - redirect to frontend
-          console.log(`🔄 Redirecting to frontend password page`);
+          console.log(`🔄 Redirecting to frontend password page (hash routing)`);
           const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
-          return res.redirect(`${frontendUrl}/s/${short_code}`);
+          // Use hash-based route so backend hosting doesn't need rewrite rules
+          return res.redirect(`${frontendUrl}/#/s/${short_code}`);
         }
       }
 
