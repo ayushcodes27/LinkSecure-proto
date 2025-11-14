@@ -14,6 +14,7 @@ export interface ILinkMapping extends Document {
   access_count: number;          // Number of times the link has been accessed
   last_accessed_at?: Date;       // Last time the link was accessed
   is_active: boolean;            // Whether the link is still active
+  passwordHash?: string;         // Optional bcrypt hash for password-protected links
   metadata?: {                   // Optional metadata
     original_file_name?: string;
     file_size?: number;
@@ -79,6 +80,11 @@ const LinkMappingSchema = new Schema<ILinkMapping>(
       default: true,
       index: true,
       description: "Whether the link is active or has been deactivated"
+    },
+    passwordHash: {
+      type: String,
+      required: false,
+      description: "Optional bcrypt hash for password-protected links"
     },
     metadata: {
       original_file_name: String,

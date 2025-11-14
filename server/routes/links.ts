@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import axios from 'axios';
+import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 import LinkMapping from '../models/LinkMapping';
 import { getAzureSASService } from '../services/azureSASService';
 import { 
@@ -38,7 +40,7 @@ const router = Router();
  */
 router.post('/create', async (req: Request, res: Response) => {
   try {
-    const { owner_id, blob_path, expiry_minutes = 1440, metadata } = req.body;
+    const { owner_id, blob_path, expiry_minutes = 1440, metadata, password } = req.body;
 
     // Validation
     if (!owner_id) {
@@ -84,12 +86,21 @@ router.post('/create', async (req: Request, res: Response) => {
     // Calculate expiry time
     const expires_at = calculateExpiryTime(validatedExpiryMinutes);
 
+    // Hash password if provided
+    let passwordHash: string | undefined;
+    if (password && password.trim().length > 0) {
+      const saltRounds = 10;
+      passwordHash = await bcrypt.hash(password, saltRounds);
+      console.log('🔒 Password protection enabled for link');
+    }
+
     // Create link mapping in database
     const linkMapping = new LinkMapping({
       short_code,
       blob_path,
       owner_id,
       expires_at,
+      passwordHash,
       metadata: metadata || {}
     });
 
@@ -121,6 +132,117 @@ router.post('/create', async (req: Request, res: Response) => {
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'Failed to create link'
+    });
+  }
+});
+
+/**
+ * POST /api/v1/links/verify/:short_code
+ * Verify password for a password-protected link and return a JWT token
+ * 
+ * Request Body:
+ * {
+ *   "password": "string"
+ * }
+ * 
+ * Response (Success):
+ * {
+ *   "success": true,
+ *   "downloadToken": "jwt_token_here"
+ * }
+ * 
+ * Response (Failure):
+ * {
+ *   "success": false,
+ *   "error": "Forbidden",
+ *   "message": "Invalid password"
+ * }
+ */
+router.post('/verify/:short_code', async (req: Request, res: Response) => {
+  try {
+    const { short_code } = req.params;
+    const { password } = req.body;
+
+    // Validate short code format
+    if (!isValidShortCode(short_code)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid short code format'
+      });
+    }
+
+    // Find the link mapping
+    const linkMapping = await LinkMapping.findByShortCode(short_code);
+
+    if (!linkMapping) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Link not found'
+      });
+    }
+
+    // Check if link has expired
+    if (isExpired(linkMapping.expires_at)) {
+      return res.status(410).json({
+        success: false,
+        error: 'Gone',
+        message: 'Link has expired'
+      });
+    }
+
+    // Check if link is password-protected
+    if (!linkMapping.passwordHash) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'This link is not password-protected'
+      });
+    }
+
+    // Validate password
+    if (!password || password.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Password is required'
+      });
+    }
+
+    // Compare password with hash
+    const isPasswordValid = await bcrypt.compare(password, linkMapping.passwordHash);
+
+    if (!isPasswordValid) {
+      console.warn(`⚠️  Invalid password attempt for link: ${short_code}`);
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'Invalid password'
+      });
+    }
+
+    // Generate JWT token (valid for 5 minutes)
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const token = jwt.sign(
+      { short_code },
+      JWT_SECRET,
+      { expiresIn: '5m' }
+    );
+
+    console.log(`✅ Password verified for link: ${short_code}`);
+
+    return res.status(200).json({
+      success: true,
+      downloadToken: token
+    });
+
+  } catch (error) {
+    console.error('❌ Error verifying password:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to verify password'
     });
   }
 });
@@ -232,6 +354,51 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       `);
     }
 
+    // Check if link is password-protected
+    if (linkMapping.passwordHash) {
+      // Check for download token in query parameters
+      const downloadToken = req.query.token as string;
+
+      if (!downloadToken) {
+        // No token provided - return 401 with requiresPassword flag
+        console.warn(`⚠️  Password-protected link accessed without token: ${short_code}`);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'This link is password-protected',
+          requiresPassword: true
+        });
+      }
+
+      // Verify JWT token
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        const decoded = jwt.verify(downloadToken, JWT_SECRET) as { short_code: string };
+
+        // Verify the token is for this specific short code
+        if (decoded.short_code !== short_code) {
+          console.warn(`⚠️  Token mismatch for link: ${short_code}`);
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Invalid download token',
+            requiresPassword: true
+          });
+        }
+
+        console.log(`🔓 Valid download token verified for: ${short_code}`);
+      } catch (error) {
+        // Token is invalid or expired
+        console.warn(`⚠️  Invalid or expired token for link: ${short_code}`, error);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Download token is invalid or expired',
+          requiresPassword: true
+        });
+      }
+    }
+
     // Generate Azure SAS URL with 60-second expiry for internal use only
     const azureSAS = getAzureSASService();
     const sasUrl = await azureSAS.generateRedirectSASUrl(linkMapping.blob_path);
@@ -241,6 +408,9 @@ router.get('/:short_code', async (req: Request, res: Response) => {
     console.log(`  📄 Blob Path: ${linkMapping.blob_path}`);
     console.log(`  📊 Access Count: ${linkMapping.access_count + 1}`);
     console.log(`  🔒 Azure URL hidden from client`);
+    if (linkMapping.passwordHash) {
+      console.log(`  🔐 Password protection: ENABLED`);
+    }
 
     // Fetch the file from Azure as a stream
     const azureResponse = await axios.get(sasUrl, {

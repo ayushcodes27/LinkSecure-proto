@@ -1219,12 +1219,22 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
       const expiryMinutes = expiresInHours ? parseInt(expiresInHours) * 60 : 24 * 60;
       const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
 
+      // Hash password if provided
+      let passwordHash: string | undefined;
+      if (password && password.trim().length > 0) {
+        const bcrypt = await import('bcrypt');
+        const saltRounds = 10;
+        passwordHash = await bcrypt.hash(password, saltRounds);
+        console.log('🔒 Password protection enabled for short link');
+      }
+
       // Create link mapping
       const linkMapping = await LinkMapping.create({
         short_code: shortCode,
         blob_path: file.blobName || file.fileName,
         owner_id: userId,
         expires_at: expiresAt,
+        passwordHash,
         metadata: {
           original_file_name: file.originalName,
           file_size: file.fileSize,
