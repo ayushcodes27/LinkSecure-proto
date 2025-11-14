@@ -1229,6 +1229,7 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
       }
 
       // Create link mapping
+      console.log(`📝 Creating link mapping with short_code: ${shortCode}`);
       const linkMapping = await LinkMapping.create({
         short_code: shortCode,
         blob_path: file.blobName || file.fileName,
@@ -1240,6 +1241,12 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
           file_size: file.fileSize,
           mime_type: file.mimeType
         }
+      });
+      console.log(`✅ Link mapping created successfully:`, {
+        id: linkMapping.id,
+        short_code: linkMapping.short_code,
+        is_active: linkMapping.is_active,
+        expires_at: linkMapping.expires_at
       });
 
       const baseUrl = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:5000';

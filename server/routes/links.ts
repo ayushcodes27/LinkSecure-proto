@@ -274,6 +274,8 @@ router.get('/:short_code', async (req: Request, res: Response) => {
   try {
     const { short_code } = req.params;
 
+    console.log(`🔍 Attempting to access short code: ${short_code}`);
+    
     // Validate short code format
     if (!isValidShortCode(short_code)) {
       console.warn(`⚠️  Invalid short code format: ${short_code}`);
@@ -300,10 +302,13 @@ router.get('/:short_code', async (req: Request, res: Response) => {
     }
 
     // Look up the link mapping in database
+    console.log(`🔍 Querying database for short_code: ${short_code}`);
     const linkMapping = await LinkMapping.findByShortCode(short_code);
+    console.log(`📊 Query result:`, linkMapping ? `Found (ID: ${linkMapping.id})` : 'Not found');
 
     if (!linkMapping) {
-      console.warn(`⚠️  Short code not found: ${short_code}`);
+      console.warn(`⚠️  Short code not found in database: ${short_code}`);
+      console.log(`💡 Debug: Check if link exists in 'linkmappings' collection with short_code='${short_code}' and is_active=true`);
       return res.status(404).send(`
         <!DOCTYPE html>
         <html>
