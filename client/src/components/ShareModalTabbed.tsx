@@ -16,9 +16,10 @@ interface ShareModalProps {
   onClose: () => void;
   fileId: string;
   fileName: string;
+  onFileShared?: () => void;
 }
 
-export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProps) => {
+export const ShareModal = ({ isOpen, onClose, fileId, fileName, onFileShared }: ShareModalProps) => {
   // State for private sharing
   const [shareEmail, setShareEmail] = useState("");
   const [sendEmailNotification, setSendEmailNotification] = useState(true);
@@ -98,6 +99,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
         });
         setShareEmail('');
         fetchSharedUsers();
+        if (onFileShared) onFileShared();
       } else {
         throw new Error(data.message || 'Failed to share file');
       }

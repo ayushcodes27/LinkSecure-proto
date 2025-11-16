@@ -569,6 +569,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (activeTab === 'trash') {
       fetchTrash();
+    } else if (activeTab === 'shared') {
+      fetchSharedFiles();
     }
   }, [activeTab]);
 
@@ -1400,6 +1402,7 @@ const Dashboard = () => {
           }}
           fileId={selectedFileForSecureLink.fileId}
           fileName={selectedFileForSecureLink.fileName}
+          onFileShared={fetchSharedFiles}
         />
       )}
 
