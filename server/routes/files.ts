@@ -210,6 +210,76 @@ router.get('/shared-with-me', async (req: Request, res: Response, next: NextFunc
   }
 });
 
+// IMPORTANT: Specific routes must come BEFORE /:fileId to avoid being caught as fileId parameter
+
+// Get all secure links for a user
+router.get('/secure-links', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    const result = await SecureLinkService.getUserSecureLinks(userId, page, limit);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get secure link statistics
+router.get('/secure-links/stats/overview', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+
+    const stats = await SecureLinkService.getLinkStatistics(userId);
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get secure link details
+router.get('/secure-links/:linkId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { linkId } = req.params;
+    const userId = (req as any).user.id;
+
+    const secureLink = await SecureLinkService.getSecureLinkDetails(linkId, userId);
+
+    res.json({
+      success: true,
+      data: secureLink
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Revoke a secure link
+router.delete('/secure-links/:linkId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { linkId } = req.params;
+    const userId = (req as any).user.id;
+
+    await SecureLinkService.revokeSecureLink(linkId, userId);
+
+    res.json({
+      success: true,
+      message: 'Secure link revoked successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get file by ID
 router.get('/:fileId', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -397,9 +467,24 @@ router.get('/:fileId/download', async (req: Request, res: Response, next: NextFu
     res.setHeader('Content-Disposition', `attachment; filename="${file.originalName}"`);
     res.setHeader('Content-Length', file.fileSize);
 
-    // Stream the file
-    const fileBuffer = await fileStorageService.getFile(file.filePath);
-    res.send(fileBuffer);
+    // Stream the file with error handling
+    try {
+      const fileBuffer = await fileStorageService.getFile(file.filePath);
+      res.send(fileBuffer);
+    } catch (storageError) {
+      console.error('File storage error:', storageError);
+      console.error('Failed to retrieve file:', {
+        fileId,
+        fileName: file.originalName,
+        filePath: file.filePath,
+        storageType: process.env.STORAGE_TYPE || 'local'
+      });
+      return res.status(500).json({
+        success: false,
+        error: 'Storage Error',
+        message: 'Failed to retrieve file from storage. The file may not exist or storage is unavailable.'
+      });
+    }
 
     // Download notifications disabled
     // Promise.resolve().then(async () => {
@@ -1346,74 +1431,6 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
       success: true,
       message: 'Secure link generated successfully',
       data: secureLink
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get all secure links for a user
-router.get('/secure-links', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = (req as any).user.id;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-
-    const result = await SecureLinkService.getUserSecureLinks(userId, page, limit);
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get secure link details
-router.get('/secure-links/:linkId', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { linkId } = req.params;
-    const userId = (req as any).user.id;
-
-    const secureLink = await SecureLinkService.getSecureLinkDetails(linkId, userId);
-
-    res.json({
-      success: true,
-      data: secureLink
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Revoke a secure link
-router.delete('/secure-links/:linkId', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { linkId } = req.params;
-    const userId = (req as any).user.id;
-
-    await SecureLinkService.revokeSecureLink(linkId, userId);
-
-    res.json({
-      success: true,
-      message: 'Secure link revoked successfully'
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get secure link statistics
-router.get('/secure-links/stats/overview', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = (req as any).user.id;
-
-    const stats = await SecureLinkService.getLinkStatistics(userId);
-
-    res.json({
-      success: true,
-      data: stats
     });
   } catch (error) {
     next(error);
