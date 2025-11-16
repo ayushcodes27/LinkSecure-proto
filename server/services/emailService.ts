@@ -41,7 +41,7 @@ async function sendViaResend({ to, subject, html }: BasicEmailParams): Promise<v
 		throw new Error(`Resend API error: ${response.status} - ${error}`);
 	}
 
-	const result = await response.json();
+	const result = await response.json() as { id: string };
 	console.log('✅ Email sent via Resend:', result.id);
 }
 
@@ -111,7 +111,7 @@ async function sendViaMailgun({ to, subject, html, text }: BasicEmailParams): Pr
 		throw new Error(`Mailgun API error: ${response.status} - ${error}`);
 	}
 
-	const result = await response.json();
+	const result = await response.json() as { id: string };
 	console.log('✅ Email sent via Mailgun:', result.id);
 }
 
