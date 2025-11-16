@@ -2,13 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Shield, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { Mail, User, Eye, EyeOff, Shield } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import ThemeToggle from "@/components/ThemeToggle";
 import { apiUrl } from "@/lib/api";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -132,283 +131,221 @@ const Register = () => {
     }
   };
 
-  const getFieldStatus = (field: string) => {
-    const value = formData[field as keyof typeof formData];
-    if (!value) return null;
-    return errors[field] ? 'error' : 'success';
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scale-in">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-            <Shield className="h-8 w-8 text-primary animate-float" />
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              LinkSecure
-            </span>
-          </Link>
-        </div>
-
-        <Card className="bg-gradient-card border-0 shadow-strong hover-lift transition-all duration-300">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
-            <CardDescription className="text-center">
-              Start securing your files with enterprise-grade protection
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <div className="relative">
-                    <Input
-                      id="firstName"
-                      placeholder="John"
-                      value={formData.firstName}
-                      onChange={(e) => handleInputChange("firstName", e.target.value)}
-                      required
-                      className={`transition-all duration-200 focus:shadow-soft pr-8 ${
-                        errors.firstName ? 'border-destructive focus:border-destructive' : ''
-                      }`}
-                      aria-invalid={!!errors.firstName}
-                      aria-describedby={errors.firstName ? "firstName-error" : undefined}
-                    />
-                    {formData.firstName && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {getFieldStatus('firstName') === 'error' ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : getFieldStatus('firstName') === 'success' ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                  {errors.firstName && (
-                    <p id="firstName-error" className="text-sm text-destructive animate-slide-up">
-                      {errors.firstName}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <div className="relative">
-                    <Input
-                      id="lastName"
-                      placeholder="Doe"
-                      value={formData.lastName}
-                      onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      required
-                      className={`transition-all duration-200 focus:shadow-soft pr-8 ${
-                        errors.lastName ? 'border-destructive focus:border-destructive' : ''
-                      }`}
-                      aria-invalid={!!errors.lastName}
-                      aria-describedby={errors.lastName ? "lastName-error" : undefined}
-                    />
-                    {formData.lastName && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        {getFieldStatus('lastName') === 'error' ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : getFieldStatus('lastName') === 'success' ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                  {errors.lastName && (
-                    <p id="lastName-error" className="text-sm text-destructive animate-slide-up">
-                      {errors.lastName}
-                    </p>
-                  )}
-                </div>
+    <div className="min-h-screen bg-background flex">
+      {/* Left Side - Gradient */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-12 items-center justify-center">
+        <div className="max-w-md space-y-6 text-white">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative p-3 rounded-2xl bg-white/20 backdrop-blur-sm ring-1 ring-white/20">
+                <Shield className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@company.com"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    required
-                    className={`transition-all duration-200 focus:shadow-soft pr-8 ${
-                      errors.email ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    aria-invalid={!!errors.email}
-                    aria-describedby={errors.email ? "email-error" : undefined}
-                  />
-                  {formData.email && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      {getFieldStatus('email') === 'error' ? (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      ) : getFieldStatus('email') === 'success' ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                {errors.email && (
-                  <p id="email-error" className="text-sm text-destructive animate-slide-up">
-                    {errors.email}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Create a strong password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    required
-                    className={`pr-16 transition-all duration-200 focus:shadow-soft ${
-                      errors.password ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? "password-error" : undefined}
-                  />
-                  <div className="absolute right-0 top-0 flex items-center h-full">
-                    {formData.password && (
-                      <div className="pr-2">
-                        {getFieldStatus('password') === 'error' ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : getFieldStatus('password') === 'success' ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : null}
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-full px-3 py-2 hover:bg-transparent transition-all duration-200"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                {errors.password && (
-                  <p id="password-error" className="text-sm text-destructive animate-slide-up">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    required
-                    className={`pr-16 transition-all duration-200 focus:shadow-soft ${
-                      errors.confirmPassword ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    aria-invalid={!!errors.confirmPassword}
-                    aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
-                  />
-                  <div className="absolute right-0 top-0 flex items-center h-full">
-                    {formData.confirmPassword && (
-                      <div className="pr-2">
-                        {getFieldStatus('confirmPassword') === 'error' ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : getFieldStatus('confirmPassword') === 'success' ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : null}
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-full px-3 py-2 hover:bg-transparent transition-all duration-200"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                {errors.confirmPassword && (
-                  <p id="confirmPassword-error" className="text-sm text-destructive animate-slide-up">
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="terms"
-                  checked={formData.agreeToTerms}
-                  onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked as boolean)}
-                  className="focus-ring"
-                />
-                <Label htmlFor="terms" className="text-sm">
-                  I agree to the{" "}
-                  <Link to="/terms" className="text-primary hover:underline transition-colors">
-                    Terms of Service
-                  </Link>{" "}
-                  and{" "}
-                  <Link to="/privacy" className="text-primary hover:underline transition-colors">
-                    Privacy Policy
-                  </Link>
-                </Label>
-              </div>
-              {errors.agreeToTerms && (
-                <p className="text-sm text-destructive animate-slide-up">
-                  {errors.agreeToTerms}
-                </p>
-              )}
-
-              <Button
-                type="submit"
-                className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300 ripple"
-                disabled={isLoading || Object.keys(errors).length > 0}
-              >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="spinner w-4 h-4"></div>
-                    <span>Creating account...</span>
-                  </div>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link to="/login" className="text-primary hover:underline font-medium transition-colors">
-                  Sign in
-                </Link>
-              </p>
             </div>
-          </CardContent>
-        </Card>
+            <div>
+              <span className="text-white text-xl font-bold">LinkSecure</span>
+            </div>
+          </Link>
+          <h2 className="text-white text-3xl font-bold">Start your secure file sharing journey</h2>
+          <p className="text-blue-50 text-lg">
+            Join thousands of users who trust LinkSecure for secure file sharing with end-to-end encryption.
+          </p>
+        </div>
+      </div>
 
-        {/* Theme Toggle */}
-        <div className="flex justify-center mt-6">
-          <ThemeToggle />
+      {/* Right Side - Form */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <Link to="/" className="lg:hidden flex items-center justify-center space-x-3 mb-8 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20">
+                <Shield className="w-6 h-6 text-primary transition-transform duration-300 group-hover:scale-110" />
+              </div>
+            </div>
+            <div>
+              <span className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                LinkSecure
+              </span>
+            </div>
+          </Link>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Create an account</h1>
+              <p className="text-slate-600 dark:text-slate-300">Start sharing files securely in minutes</p>
+            </div>
+            <ThemeToggle />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={(e) => handleInputChange("firstName", e.target.value)}
+                    className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${errors.firstName ? 'border-red-500' : ''}`}
+                    required
+                  />
+                </div>
+                {errors.firstName && (
+                  <p className="text-sm text-red-500 dark:text-red-400">{errors.firstName}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${errors.lastName ? 'border-red-500' : ''}`}
+                    required
+                  />
+                </div>
+                {errors.lastName && (
+                  <p className="text-sm text-red-500 dark:text-red-400">{errors.lastName}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${errors.email ? 'border-red-500' : ''}`}
+                  required
+                />
+              </div>
+              {errors.email && (
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  className={`pl-10 pr-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${errors.password ? 'border-red-500' : ''}`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.password && (
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.password}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  className={`pl-10 pr-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-sm text-red-500 dark:text-red-400">{errors.confirmPassword}</p>
+              )}
+            </div>
+
+            <div className="flex items-start space-x-2 pt-2">
+              <Checkbox
+                id="terms"
+                checked={formData.agreeToTerms}
+                onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked as boolean)}
+                className="mt-1"
+              />
+              <Label
+                htmlFor="terms"
+                className="cursor-pointer text-slate-700 dark:text-slate-300 leading-relaxed text-sm"
+              >
+                I agree to the{" "}
+                <Link to="/terms" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+                  Privacy Policy
+                </Link>
+              </Label>
+            </div>
+            {errors.agreeToTerms && (
+              <p className="text-sm text-red-500 dark:text-red-400">{errors.agreeToTerms}</p>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 h-11 shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={isLoading || Object.keys(errors).length > 0}
+            >
+              {isLoading ? "Creating account..." : "Create Account"}
+            </Button>
+          </form>
+
+          <p className="text-center text-muted-foreground">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:text-primary/80 transition-colors font-medium">
+              Sign in
+            </Link>
+          </p>
+
+          <Link
+            to="/"
+            className="flex items-center justify-center w-full text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Back to home
+          </Link>
         </div>
       </div>
     </div>

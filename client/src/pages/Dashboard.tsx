@@ -569,25 +569,33 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+      <header className="sticky top-0 z-40 border-b bg-card/80 backdrop-blur-xl supports-[backdrop-filter]:bg-card/60">
         <div className="h-16 flex items-center justify-between px-6">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
-              <Shield className="h-6 w-6 text-primary" />
-              <span className="text-lg font-semibold text-foreground">
-                LinkSecure
-              </span>
+            <div className="flex items-center space-x-3 group">
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="relative p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20">
+                  <Shield className="h-5 w-5 text-primary transition-transform duration-300 group-hover:scale-110" />
+                </div>
+              </div>
+              <div>
+                <span className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  LinkSecure
+                </span>
+                <p className="text-xs text-muted-foreground -mt-0.5">Dashboard</p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             <ThemeToggle />
             <NotificationCenter />
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => navigate('/dashboard/settings')}
-              className="hover:bg-muted rounded-lg"
+              className="hover:bg-muted/50 rounded-lg transition-all duration-200 hover:scale-105"
             >
               <Settings className="h-5 w-5" />
             </Button>
@@ -608,23 +616,36 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="ml-64 pt-8 pb-12 px-8">
         {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-            {activeTab === 'files' && 'Files'}
-            {activeTab === 'secure-links' && 'Secure Links'}
-            {activeTab === 'history' && 'Activity History'}
-            {activeTab === 'analytics' && 'Analytics'}
-            {activeTab === 'trash' && 'Trash'}
-            {activeTab === 'users' && 'Team Members'}
-          </h1>
-          <p className="text-muted-foreground">
-            {activeTab === 'files' && 'Manage and organize your files'}
-            {activeTab === 'secure-links' && 'Monitor and control shared links'}
-            {activeTab === 'history' && 'Track all file activities'}
-            {activeTab === 'analytics' && 'View detailed insights and metrics'}
-            {activeTab === 'trash' && 'Recover or permanently delete files'}
-            {activeTab === 'users' && 'Manage team access and permissions'}
-          </p>
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
+                {activeTab === 'files' && 'Files'}
+                {activeTab === 'secure-links' && 'Secure Links'}
+                {activeTab === 'history' && 'Activity History'}
+                {activeTab === 'analytics' && 'Analytics'}
+                {activeTab === 'trash' && 'Trash'}
+                {activeTab === 'users' && 'Team Members'}
+              </h1>
+              <p className="text-muted-foreground text-base">
+                {activeTab === 'files' && 'Manage and organize your files'}
+                {activeTab === 'secure-links' && 'Monitor and control shared links'}
+                {activeTab === 'history' && 'Track all file activities'}
+                {activeTab === 'analytics' && 'View detailed insights and metrics'}
+                {activeTab === 'trash' && 'Recover or permanently delete files'}
+                {activeTab === 'users' && 'Manage team access and permissions'}
+              </p>
+            </div>
+            {activeTab === 'files' && (
+              <Button 
+                onClick={() => document.getElementById('file-upload')?.click()}
+                className="bg-gradient-primary hover:shadow-glow transition-all duration-300"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Upload File
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -834,17 +855,33 @@ const Dashboard = () => {
                     filteredFiles.map((file, index) => (
                       <div
                         key={file.fileId}
-                        className="group flex items-center justify-between p-5 border rounded-xl hover:border-primary/30 hover:shadow-md transition-all duration-200 bg-card"
+                        className="group relative flex items-center justify-between p-5 border rounded-xl 
+                                   bg-gradient-to-br from-card to-card/50 
+                                   hover:border-primary/40 hover:shadow-lg 
+                                   transition-all duration-300 
+                                   hover:-translate-y-1 hover:scale-[1.01]
+                                   overflow-hidden"
                       >
-                        <div className="flex items-center space-x-4 flex-1 min-w-0">
-                          <div className="flex-shrink-0 p-3 rounded-lg bg-primary/5 text-primary group-hover:bg-primary/10 transition-colors">
-                            {getFileIcon(file.mimeType)}
+                        {/* Animated background gradient on hover */}
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        <div className="relative flex items-center space-x-4 flex-1 min-w-0">
+                          <div className="flex-shrink-0 relative">
+                            <div className="absolute inset-0 bg-primary/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative p-3.5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary 
+                                          group-hover:from-primary/20 group-hover:to-primary/10 
+                                          ring-1 ring-primary/20 group-hover:ring-primary/40
+                                          transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                              {getFileIcon(file.mimeType)}
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground truncate">{file.originalName}</p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className="text-xs text-muted-foreground font-mono inline-flex items-center gap-1">
-                                ID: {file.fileId}
+                            <p className="font-semibold text-foreground truncate group-hover:text-primary transition-colors duration-200">
+                              {file.originalName}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <span className="text-xs text-muted-foreground font-mono inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/50">
+                                ID: {file.fileId.substring(0, 8)}...
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -860,35 +897,32 @@ const Dashboard = () => {
                                   <Copy className="h-3 w-3" />
                                 </button>
                               </span>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs text-muted-foreground">
+                              <Badge variant="secondary" className="text-xs font-normal">
                                 {formatFileSize(file.fileSize)}
-                              </span>
-                              <span className="text-xs text-muted-foreground">•</span>
+                              </Badge>
                               <span className="text-xs text-muted-foreground">
                                 {formatDate(file.createdAt)}
                               </span>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs text-muted-foreground">
+                              <Badge variant="outline" className="text-xs">
                                 {file.downloadCount} {file.downloadCount === 1 ? 'download' : 'downloads'}
-                              </span>
+                              </Badge>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 ml-4">
+                        <div className="relative flex items-center gap-3 ml-4">
                           <Badge 
                             variant={file.isPublic ? "default" : "secondary"} 
-                            className="text-xs px-2 py-1"
+                            className="text-xs px-2.5 py-1 font-medium ring-1 ring-current/20"
                           >
                             {file.isPublic ? "Public" : "Private"}
                           </Badge>
                           
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 rounded-lg"
+                              className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
                               onClick={() => handlePreview(file, index)}
                               title="Preview"
                             >
@@ -897,7 +931,7 @@ const Dashboard = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 rounded-lg"
+                              className="h-9 w-9 rounded-lg hover:bg-accent/10 hover:text-accent transition-all duration-200 hover:scale-110"
                               onClick={() => handleDownload(file.fileId, file.originalName)}
                               title="Download"
                             >
@@ -906,7 +940,7 @@ const Dashboard = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 rounded-lg"
+                              className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
                               onClick={() => {
                                 setSelectedFileForSecureLink({ fileId: file.fileId, fileName: file.originalName });
                                 setShowSecureLinkModal(true);

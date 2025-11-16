@@ -137,25 +137,37 @@ export const FileUploadZone = ({ onUploadComplete }: FileUploadZoneProps) => {
   };
 
   return (
-    <Card className="bg-gradient-card border-0 shadow-soft">
-      <CardContent className="p-6">
+    <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card via-card/95 to-card/90 shadow-lg">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 opacity-50" />
+      
+      <CardContent className="relative p-6">
         <div
           className={`
-            border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300
+            relative border-2 border-dashed rounded-2xl p-12 text-center 
+            transition-all duration-500
             ${isDragOver 
-              ? 'border-primary bg-primary/5 shadow-glow' 
-              : 'border-border hover:border-primary/50 hover:bg-muted/30'
+              ? 'border-primary bg-gradient-to-br from-primary/10 via-primary/5 to-accent/5 shadow-2xl shadow-primary/20 scale-[1.02]' 
+              : 'border-border/50 hover:border-primary/40 hover:bg-gradient-to-br hover:from-muted/30 hover:via-muted/20 hover:to-muted/10'
             }
+            group
           `}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <Upload className={`h-12 w-12 mx-auto mb-4 transition-colors ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
-          <h3 className="text-lg font-semibold mb-2">
+          {/* Animated upload icon */}
+          <div className="relative inline-flex mb-6">
+            <div className={`absolute inset-0 bg-primary/20 rounded-full blur-2xl transition-all duration-500 ${isDragOver ? 'opacity-100 scale-150' : 'opacity-0 scale-100'}`} />
+            <div className={`relative p-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 transition-all duration-500 ${isDragOver ? 'scale-110 rotate-6' : 'group-hover:scale-105'}`}>
+              <Upload className={`h-10 w-10 transition-all duration-500 ${isDragOver ? 'text-primary scale-110' : 'text-muted-foreground group-hover:text-primary'}`} />
+            </div>
+          </div>
+          
+          <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
             Drop files here or click to upload
           </h3>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground mb-6 text-sm">
             Support for PDF, DOC, JPG, PNG, MP4 and more. Max file size: 100MB
           </p>
           <input
@@ -166,7 +178,7 @@ export const FileUploadZone = ({ onUploadComplete }: FileUploadZoneProps) => {
             id="file-upload"
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.mp4,.mov,.avi"
           />
-          <Button asChild className="bg-gradient-primary hover:shadow-glow transition-all duration-300">
+          <Button asChild className="bg-gradient-primary hover:shadow-glow transition-all duration-300 hover:scale-105">
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="h-4 w-4 mr-2" />
               Choose Files

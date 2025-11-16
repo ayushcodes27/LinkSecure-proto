@@ -2,16 +2,17 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Mail, Eye, EyeOff, Shield, Clock, Users } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import ThemeToggle from "@/components/ThemeToggle";
 import { apiUrl } from "@/lib/api";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
@@ -167,193 +168,227 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scale-in">
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-            <Shield className="h-8 w-8 text-primary animate-float" />
-            <span className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              LinkSecure
-            </span>
+    <div className="min-h-screen bg-background flex">
+      {/* Left Side - Gradient with Content */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-12 flex-col justify-between">
+        <div className="space-y-8">
+          <Link to="/" className="flex items-center space-x-3 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative p-3 rounded-2xl bg-white/20 backdrop-blur-sm ring-1 ring-white/20">
+                <Shield className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" />
+              </div>
+            </div>
+            <div>
+              <span className="text-white text-xl font-bold">LinkSecure</span>
+            </div>
           </Link>
+          
+          <div className="space-y-6">
+            <h2 className="text-white text-3xl font-bold">Welcome back to secure file sharing</h2>
+            <p className="text-blue-50 text-lg">
+              Access your files from anywhere. Share securely with end-to-end encryption. Your trusted file sharing platform.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-medium">Bank-level security</p>
+                <p className="text-blue-100">All files protected with 256-bit encryption</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-medium">Trusted by thousands</p>
+                <p className="text-blue-100">Join 100,000+ users worldwide</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-white font-medium">24/7 access</p>
+                <p className="text-blue-100">Your files available anytime, anywhere</p>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <Card className="bg-gradient-card border-0 shadow-strong hover-lift transition-all duration-300">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
-            <CardDescription className="text-center">
-              Enter your credentials to access your secure files
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {requiresVerification && (
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-2">
-                    Your email address needs to be verified before you can log in.
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleResendVerification}
-                    className="w-full"
-                  >
-                    Resend Verification Email
-                  </Button>
-                </div>
-              )}
-
-              {requires2FA && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    A verification code has been sent to your email.
-                  </p>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={handleEmailChange}
-                    required
-                    disabled={requires2FA}
-                    className={`transition-all duration-200 focus:shadow-soft pr-10 ${
-                      emailError ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    aria-invalid={!!emailError}
-                    aria-describedby={emailError ? "email-error" : undefined}
-                  />
-                  {email && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      {emailError ? (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      ) : validateEmail(email) ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-                {emailError && (
-                  <p id="email-error" className="text-sm text-destructive animate-slide-up">
-                    {emailError}
-                  </p>
-                )}
+      {/* Right Side - Form */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+        <div className="w-full max-w-md space-y-8">
+          {/* Mobile Logo */}
+          <Link to="/" className="lg:hidden flex items-center justify-center space-x-3 mb-8 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative p-2 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 ring-1 ring-primary/20">
+                <Shield className="w-6 h-6 text-primary transition-transform duration-300 group-hover:scale-110" />
               </div>
+            </div>
+            <div>
+              <span className="text-lg font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                LinkSecure
+              </span>
+            </div>
+          </Link>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={handlePasswordChange}
-                    required
-                    disabled={requires2FA}
-                    className={`pr-20 transition-all duration-200 focus:shadow-soft ${
-                      passwordError ? 'border-destructive focus:border-destructive' : ''
-                    }`}
-                    aria-invalid={!!passwordError}
-                    aria-describedby={passwordError ? "password-error" : undefined}
-                  />
-                  <div className="absolute right-0 top-0 flex items-center h-full">
-                    {password && (
-                      <div className="pr-2">
-                        {passwordError ? (
-                          <AlertCircle className="h-4 w-4 text-destructive" />
-                        ) : validatePassword(password) ? (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : null}
-                      </div>
-                    )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-full px-3 py-2 hover:bg-transparent transition-all duration-200"
-                      onClick={() => setShowPassword(!showPassword)}
-                      aria-label={showPassword ? "Hide password" : "Show password"}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                {passwordError && (
-                  <p id="password-error" className="text-sm text-destructive animate-slide-up">
-                    {passwordError}
-                  </p>
-                )}
-              </div>
+          <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Welcome back</h1>
+              <p className="text-slate-600 dark:text-slate-300">Enter your credentials to access your account</p>
+            </div>
+            <ThemeToggle />
+          </div>
 
-              {requires2FA && (
-                <div className="space-y-2">
-                  <Label htmlFor="twoFactorCode">Verification Code</Label>
-                  <Input
-                    id="twoFactorCode"
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={twoFactorCode}
-                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="transition-all duration-200 focus:shadow-soft"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the 6-digit code sent to your email
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-primary hover:underline transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
+          {requiresVerification && (
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+              <p className="text-sm text-yellow-800 dark:text-yellow-200 mb-3">
+                Your email address needs to be verified before you can log in.
+              </p>
               <Button
-                type="submit"
-                className="w-full bg-gradient-primary hover:shadow-glow transition-all duration-300 ripple"
-                disabled={isLoading || !!emailError || !!passwordError}
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResendVerification}
+                className="w-full"
               >
-                {isLoading ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="spinner w-4 h-4"></div>
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
-                  "Sign In"
-                )}
+                Resend Verification Email
               </Button>
-            </form>
+            </div>
+          )}
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Don't have an account?{" "}
-                <Link to="/register" className="text-primary hover:underline font-medium transition-colors">
-                  Sign up
-                </Link>
+          {requires2FA && (
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                A verification code has been sent to your email.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {/* Theme Toggle */}
-        <div className="flex justify-center mt-6">
-          <ThemeToggle />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={handleEmailChange}
+                  disabled={requires2FA}
+                  className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${emailError ? 'border-red-500' : ''}`}
+                  required
+                />
+              </div>
+              {emailError && (
+                <p className="text-sm text-red-500 dark:text-red-400">{emailError}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={handlePasswordChange}
+                  disabled={requires2FA}
+                  className={`pl-10 pr-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${passwordError ? 'border-red-500' : ''}`}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-sm text-red-500 dark:text-red-400">{passwordError}</p>
+              )}
+            </div>
+
+            {requires2FA && (
+              <div className="space-y-2">
+                <Label htmlFor="twoFactorCode">Verification Code</Label>
+                <Input
+                  id="twoFactorCode"
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  maxLength={6}
+                  className="h-11 dark:bg-slate-900 dark:border-slate-700"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Enter the 6-digit code sent to your email
+                </p>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                />
+                <Label
+                  htmlFor="remember"
+                  className="cursor-pointer text-slate-700 dark:text-slate-300"
+                >
+                  Remember me
+                </Label>
+              </div>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 h-11 shadow-lg hover:shadow-xl transition-all duration-300"
+              disabled={isLoading || !!emailError || !!passwordError}
+            >
+              {isLoading ? "Signing in..." : "Sign In"}
+            </Button>
+          </form>
+
+          <p className="text-center text-muted-foreground">
+            Don't have an account?{" "}
+            <Link to="/register" className="text-primary hover:text-primary/80 transition-colors font-medium">
+              Sign up
+            </Link>
+          </p>
+
+          <Link
+            to="/"
+            className="flex items-center justify-center w-full text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Back to home
+          </Link>
         </div>
       </div>
     </div>
@@ -361,4 +396,3 @@ const Login = () => {
 };
 
 export default Login;
-
