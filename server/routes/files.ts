@@ -139,6 +139,77 @@ router.get('/my-files', async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+// Get files shared with the current user
+// IMPORTANT: This must be before /:fileId route to avoid being caught as a fileId parameter
+router.get('/shared-with-me', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    // Find all file access permissions for this user
+    const permissions = await FileAccess.find({
+      userId,
+      isActive: true
+    })
+      .populate('grantedBy', 'firstName lastName email')
+      .sort({ grantedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Extract file IDs
+    const fileIds = permissions.map(p => p.fileId);
+
+    // Find the actual files
+    const files = await FileModel.find({
+      fileId: { $in: fileIds }
+    }).lean();
+
+    // Create a map for quick lookup
+    const fileMap = new Map(files.map(f => [f.fileId, f]));
+
+    // Combine permission info with file data
+    const sharedFiles = permissions
+      .map(permission => {
+        const file = fileMap.get(permission.fileId);
+        if (!file) return null;
+
+        return {
+          ...file,
+          sharedBy: permission.grantedBy,
+          sharedAt: permission.grantedAt,
+          accessLevel: permission.accessLevel,
+          permissionId: permission._id
+        };
+      })
+      .filter(Boolean);
+
+    // Get total count for pagination
+    const totalCount = await FileAccess.countDocuments({
+      userId,
+      isActive: true
+    });
+
+    res.json({
+      success: true,
+      data: {
+        files: sharedFiles,
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          hasMore: skip + sharedFiles.length < totalCount
+        }
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get file by ID
 router.get('/:fileId', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -1499,76 +1570,6 @@ router.post('/:fileId/share', async (req: Request, res: Response, next: NextFunc
         permissionLevel,
         sharedAt: newAccess.grantedAt,
         emailSent: shouldSendEmail
-      }
-    });
-
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get files shared with the current user
-router.get('/shared-with-me', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const userId = (req as any).user.id;
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const skip = (page - 1) * limit;
-
-    // Find all file access permissions for this user
-    const permissions = await FileAccess.find({
-      userId,
-      isActive: true
-    })
-      .populate('grantedBy', 'firstName lastName email')
-      .sort({ grantedAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    // Extract file IDs
-    const fileIds = permissions.map(p => p.fileId);
-
-    // Find the actual files
-    const files = await FileModel.find({
-      fileId: { $in: fileIds }
-    }).lean();
-
-    // Create a map for quick lookup
-    const fileMap = new Map(files.map(f => [f.fileId, f]));
-
-    // Combine permission info with file data
-    const sharedFiles = permissions
-      .map(permission => {
-        const file = fileMap.get(permission.fileId);
-        if (!file) return null;
-
-        return {
-          ...file,
-          sharedBy: permission.grantedBy,
-          sharedAt: permission.grantedAt,
-          accessLevel: permission.accessLevel,
-          permissionId: permission._id
-        };
-      })
-      .filter(Boolean);
-
-    // Get total count for pagination
-    const totalCount = await FileAccess.countDocuments({
-      userId,
-      isActive: true
-    });
-
-    res.json({
-      success: true,
-      data: {
-        files: sharedFiles,
-        pagination: {
-          page,
-          limit,
-          totalCount,
-          totalPages: Math.ceil(totalCount / limit),
-          hasMore: skip + sharedFiles.length < totalCount
-        }
       }
     });
 

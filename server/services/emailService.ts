@@ -7,6 +7,115 @@ type BasicEmailParams = {
 	text?: string;
 };
 
+type EmailProvider = 'resend' | 'sendgrid' | 'mailgun' | 'smtp';
+
+// Get configured email provider
+function getEmailProvider(): EmailProvider {
+	const provider = process.env.EMAIL_SERVICE?.toLowerCase();
+	if (provider === 'resend' || provider === 'sendgrid' || provider === 'mailgun') {
+		return provider;
+	}
+	return 'smtp'; // Default fallback
+}
+
+// Resend API implementation
+async function sendViaResend({ to, subject, html }: BasicEmailParams): Promise<void> {
+	const apiKey = process.env.RESEND_API_KEY;
+	if (!apiKey) {
+		throw new Error('RESEND_API_KEY not configured');
+	}
+
+	const from = process.env.EMAIL_FROM || 'LinkSecure <noreply@linksecure.com>';
+	
+	const response = await fetch('https://api.resend.com/emails', {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({ from, to, subject, html }),
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		throw new Error(`Resend API error: ${response.status} - ${error}`);
+	}
+
+	const result = await response.json();
+	console.log('✅ Email sent via Resend:', result.id);
+}
+
+// SendGrid API implementation
+async function sendViaSendGrid({ to, subject, html, text }: BasicEmailParams): Promise<void> {
+	const apiKey = process.env.SENDGRID_API_KEY;
+	if (!apiKey) {
+		throw new Error('SENDGRID_API_KEY not configured');
+	}
+
+	const from = process.env.EMAIL_FROM || 'noreply@linksecure.com';
+	
+	const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${apiKey}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			personalizations: [{ to: [{ email: to }] }],
+			from: { email: from },
+			subject,
+			content: [
+				{ type: 'text/html', value: html },
+				{ type: 'text/plain', value: text || html.replace(/<[^>]+>/g, ' ') }
+			],
+		}),
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		throw new Error(`SendGrid API error: ${response.status} - ${error}`);
+	}
+
+	console.log('✅ Email sent via SendGrid');
+}
+
+// Mailgun API implementation
+async function sendViaMailgun({ to, subject, html, text }: BasicEmailParams): Promise<void> {
+	const apiKey = process.env.MAILGUN_API_KEY;
+	const domain = process.env.MAILGUN_DOMAIN;
+	
+	if (!apiKey || !domain) {
+		throw new Error('MAILGUN_API_KEY and MAILGUN_DOMAIN not configured');
+	}
+
+	const from = process.env.EMAIL_FROM || 'noreply@linksecure.com';
+	
+	const formData = new URLSearchParams();
+	formData.append('from', from);
+	formData.append('to', to);
+	formData.append('subject', subject);
+	formData.append('html', html);
+	formData.append('text', text || html.replace(/<[^>]+>/g, ' '));
+
+	const response = await fetch(`https://api.mailgun.net/v3/${domain}/messages`, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Basic ${Buffer.from(`api:${apiKey}`).toString('base64')}`,
+			'Content-Type': 'application/x-www-form-urlencoded',
+		},
+		body: formData,
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		throw new Error(`Mailgun API error: ${response.status} - ${error}`);
+	}
+
+	const result = await response.json();
+	console.log('✅ Email sent via Mailgun:', result.id);
+}
+
+// SMTP implementation (original nodemailer)
 function createTransport(): Transporter {
 	const host = process.env.SMTP_HOST || "smtp.gmail.com";
 	const port = process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : 587;
@@ -22,6 +131,8 @@ function createTransport(): Transporter {
 		port,
 		secure: port === 465,
 		auth: { user, pass },
+		connectionTimeout: 10000, // 10 seconds
+		greetingTimeout: 10000,
 	});
 }
 
@@ -31,10 +142,39 @@ function getTransport(): Transporter {
 	return sharedTransport;
 }
 
-async function sendEmail({ to, subject, html, text }: BasicEmailParams): Promise<void> {
-	const from = process.env.EMAIL_FROM || `LinkSecure <no-reply@linksecure>`;
+async function sendViaSMTP({ to, subject, html, text }: BasicEmailParams): Promise<void> {
+	const from = process.env.EMAIL_FROM || `LinkSecure <no-reply@linksecure.com>`;
 	const transporter = getTransport();
 	await transporter.sendMail({ from, to, subject, html, text: text || html.replace(/<[^>]+>/g, " ") });
+	console.log('✅ Email sent via SMTP');
+}
+
+// Main send function with provider routing
+async function sendEmail(params: BasicEmailParams): Promise<void> {
+	const provider = getEmailProvider();
+	
+	try {
+		console.log(`📧 Sending email via ${provider} to ${params.to}`);
+		
+		switch (provider) {
+			case 'resend':
+				await sendViaResend(params);
+				break;
+			case 'sendgrid':
+				await sendViaSendGrid(params);
+				break;
+			case 'mailgun':
+				await sendViaMailgun(params);
+				break;
+			case 'smtp':
+			default:
+				await sendViaSMTP(params);
+				break;
+		}
+	} catch (error) {
+		console.error(`❌ Failed to send email via ${provider}:`, error);
+		throw error;
+	}
 }
 
 function buildFooter(unsubscribeUrl?: string): string {
