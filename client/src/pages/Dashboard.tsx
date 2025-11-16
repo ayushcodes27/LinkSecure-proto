@@ -101,9 +101,11 @@ const Dashboard = () => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [activities, setActivities] = useState<ActivityData[]>([]);
   const [secureLinks, setSecureLinks] = useState<any[]>([]);
+  const [sharedFiles, setSharedFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [linksLoading, setLinksLoading] = useState(false);
+  const [sharedLoading, setSharedLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashFiles, setTrashFiles] = useState<FileData[]>([]);
@@ -189,6 +191,37 @@ const Dashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch files shared with current user
+  const fetchSharedFiles = async () => {
+    if (!token) return;
+
+    setSharedLoading(true);
+    try {
+      const response = await fetch(apiUrl('/api/files/shared-with-me'), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setSharedFiles(result.data.files || []);
+      } else {
+        throw new Error('Failed to fetch shared files');
+      }
+    } catch (error) {
+      console.error('Error fetching shared files:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load shared files",
+        variant: "destructive"
+      });
+    } finally {
+      setSharedLoading(false);
     }
   };
 
@@ -490,6 +523,7 @@ const Dashboard = () => {
     fetchActivity();
     fetchStorageStats();
     fetchUserProfile();
+    fetchSharedFiles();
     // Add a small delay for secure links to ensure user is fully authenticated
     setTimeout(() => {
       fetchSecureLinks();
@@ -621,6 +655,7 @@ const Dashboard = () => {
             <div>
               <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
                 {activeTab === 'files' && 'Files'}
+                {activeTab === 'shared' && 'Shared with Me'}
                 {activeTab === 'secure-links' && 'Secure Links'}
                 {activeTab === 'history' && 'Activity History'}
                 {activeTab === 'analytics' && 'Analytics'}
@@ -629,6 +664,7 @@ const Dashboard = () => {
               </h1>
               <p className="text-muted-foreground text-base">
                 {activeTab === 'files' && 'Manage and organize your files'}
+                {activeTab === 'shared' && 'Access files shared with you by other users'}
                 {activeTab === 'secure-links' && 'Monitor and control shared links'}
                 {activeTab === 'history' && 'Track all file activities'}
                 {activeTab === 'analytics' && 'View detailed insights and metrics'}
@@ -996,6 +1032,122 @@ const Dashboard = () => {
               </CardContent>
             </Card>
             </>
+          )}
+
+          {activeTab === 'shared' && (
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="border-b bg-muted/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Shared with Me</CardTitle>
+                    <CardDescription className="text-sm mt-1">
+                      Files that others have shared with you
+                    </CardDescription>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={fetchSharedFiles}
+                    disabled={sharedLoading}
+                    className="h-9"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${sharedLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {sharedLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="p-5 border rounded-xl bg-card">
+                        <SkeletonLoader variant="text" lines={2} />
+                      </div>
+                    ))}
+                  </div>
+                ) : sharedFiles.length === 0 ? (
+                  <div className="text-center py-16 text-muted-foreground">
+                    <Users className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg font-medium mb-1">No shared files</p>
+                    <p className="text-sm">Files shared with you will appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sharedFiles.map((file, index) => (
+                      <div 
+                        key={file.fileId} 
+                        className="group relative flex items-center justify-between p-5 border rounded-xl 
+                                 hover:border-primary/30 hover:shadow-lg transition-all duration-300 
+                                 cursor-pointer bg-gradient-to-r from-card via-card to-card
+                                 hover:from-primary/5 hover:via-card hover:to-accent/5"
+                        onClick={() => handlePreview(file, index)}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        
+                        <div className="relative flex items-center space-x-4 flex-1 min-w-0">
+                          <div className="flex-shrink-0 relative">
+                            <div className="absolute inset-0 bg-primary/20 rounded-xl blur-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            <div className="relative p-3.5 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 text-primary 
+                                          group-hover:from-primary/20 group-hover:to-primary/10 
+                                          ring-1 ring-primary/20 group-hover:ring-primary/40
+                                          transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                              {getFileIcon(file.mimeType)}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-foreground truncate group-hover:text-primary transition-colors duration-200">
+                              {file.originalName}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              <Badge variant="outline" className="text-xs">
+                                Shared by {file.sharedBy?.firstName} {file.sharedBy?.lastName}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs font-normal">
+                                {formatFileSize(file.fileSize)}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                Shared {formatDate(file.sharedAt)}
+                              </span>
+                              <Badge variant="outline" className="text-xs capitalize">
+                                {file.accessLevel} access
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="relative flex items-center gap-3 ml-4">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200 hover:scale-110"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePreview(file, index);
+                              }}
+                              title="Preview"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 rounded-lg hover:bg-accent/10 hover:text-accent transition-all duration-200 hover:scale-110"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(file.fileId, file.originalName);
+                              }}
+                              title="Download"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           )}
 
           {activeTab === 'secure-links' && (

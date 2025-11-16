@@ -33,6 +33,8 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
     requireEmail: false,
     useTrackingPage: false, // Default to direct Azure link; will auto-switch when policies require it
     useShortLink: true, // Default to short LinkSecure URLs (cleaner, trackable, secure)
+    shareEmail: "", // Email for sharing with another user
+    sendEmailNotification: true, // Send email notification when sharing
   });
   
   const [shareLink, setShareLink] = useState("");
@@ -480,6 +482,103 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName }: ShareModalProp
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Share with User by Email */}
+          <Card className="bg-gradient-card border-0 shadow-soft">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Share2 className="h-5 w-5" />
+                Share with LinkSecure User
+              </CardTitle>
+              <CardDescription>
+                Send direct access to another LinkSecure user by email
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="share-email">Recipient Email</Label>
+                <Input
+                  id="share-email"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={shareSettings.shareEmail || ""}
+                  onChange={(e) => handleUpdateSetting('shareEmail', e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  The user must have a LinkSecure account
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="send-email-notification" className="text-sm font-medium">
+                    Send Email Notification
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Notify the user via email about the shared file
+                  </p>
+                </div>
+                <Switch
+                  id="send-email-notification"
+                  checked={shareSettings.sendEmailNotification !== false}
+                  onCheckedChange={(checked) => handleUpdateSetting('sendEmailNotification', checked)}
+                />
+              </div>
+
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90"
+                onClick={async () => {
+                  const email = shareSettings.shareEmail?.trim();
+                  if (!email) {
+                    toast({
+                      title: "Email required",
+                      description: "Please enter a recipient email address",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch(apiUrl(`/api/files/${fileId}/share`), {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                      },
+                      body: JSON.stringify({
+                        email,
+                        sendEmail: shareSettings.sendEmailNotification !== false,
+                        permissionLevel: 'view'
+                      })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                      toast({
+                        title: "File shared successfully",
+                        description: `${fileName} has been shared with ${email}`,
+                      });
+                      handleUpdateSetting('shareEmail', '');
+                    } else {
+                      throw new Error(data.message || 'Failed to share file');
+                    }
+                  } catch (error) {
+                    console.error('Error sharing file:', error);
+                    toast({
+                      title: "Error",
+                      description: error instanceof Error ? error.message : "Failed to share file",
+                      variant: "destructive"
+                    });
+                  }
+                }}
+                disabled={!shareSettings.shareEmail?.trim()}
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                Share File
+              </Button>
             </CardContent>
           </Card>
 

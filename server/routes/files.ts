@@ -1392,4 +1392,197 @@ router.get('/azure-sas-tracker', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, '../public/azure-sas-tracker.html'));
 });
 
+// Share file with another user by email
+router.post('/:fileId/share', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileId } = req.params;
+    const { email, sendEmail: shouldSendEmail = true, permissionLevel = 'view' } = req.body;
+    const ownerId = (req as any).user.id;
+
+    // Validate email
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Recipient email is required'
+      });
+    }
+
+    // Find the recipient user
+    const recipientUser = await User.findOne({ email: email.trim().toLowerCase() });
+    
+    if (!recipientUser) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'User not found. You can only share with existing LinkSecure users.'
+      });
+    }
+
+    // Check if owner is trying to share with themselves
+    if (recipientUser._id.toString() === ownerId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'You cannot share a file with yourself'
+      });
+    }
+
+    // Verify the file exists and belongs to the owner
+    const file = await FileModel.findOne({ fileId, uploadedBy: ownerId });
+    
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'File not found or you do not have permission to share it'
+      });
+    }
+
+    // Check if file is already shared with this user
+    const existingAccess = await FileAccess.findOne({
+      fileId,
+      userId: recipientUser._id
+    });
+
+    if (existingAccess) {
+      return res.status(200).json({
+        success: true,
+        message: 'File already shared with this user',
+        data: {
+          fileId,
+          recipientEmail: email,
+          sharedAt: existingAccess.grantedAt
+        }
+      });
+    }
+
+    // Create new file access permission
+    const newAccess = new FileAccess({
+      fileId,
+      userId: recipientUser._id,
+      grantedBy: ownerId,
+      accessLevel: permissionLevel,
+      grantedAt: new Date(),
+      isActive: true,
+      accessHistory: []
+    });
+
+    await newAccess.save();
+
+    // Send email notification if requested
+    if (shouldSendEmail) {
+      try {
+        const owner = await User.findById(ownerId);
+        const ownerName = owner ? `${owner.firstName} ${owner.lastName}` : 'A user';
+        const loginUrl = process.env.FRONTEND_URL 
+          ? `${process.env.FRONTEND_URL}/#/login` 
+          : 'http://localhost:8080/#/login';
+
+        await EmailService.sendFileSharedNotification({
+          to: recipientUser.email,
+          ownerName,
+          fileName: file.originalName,
+          accessLevel: permissionLevel,
+          openUrl: loginUrl
+        });
+
+        console.log(`✉️  File sharing notification sent to ${recipientUser.email}`);
+      } catch (emailError) {
+        console.error('Failed to send email notification:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
+
+    console.log(`✅ File "${file.originalName}" shared with ${recipientUser.email}`);
+
+    res.status(201).json({
+      success: true,
+      message: 'File shared successfully',
+      data: {
+        fileId,
+        fileName: file.originalName,
+        recipientEmail: email,
+        recipientName: `${recipientUser.firstName} ${recipientUser.lastName}`,
+        permissionLevel,
+        sharedAt: newAccess.grantedAt,
+        emailSent: shouldSendEmail
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get files shared with the current user
+router.get('/shared-with-me', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = (page - 1) * limit;
+
+    // Find all file access permissions for this user
+    const permissions = await FileAccess.find({
+      userId,
+      isActive: true
+    })
+      .populate('grantedBy', 'firstName lastName email')
+      .sort({ grantedAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Extract file IDs
+    const fileIds = permissions.map(p => p.fileId);
+
+    // Find the actual files
+    const files = await FileModel.find({
+      fileId: { $in: fileIds }
+    }).lean();
+
+    // Create a map for quick lookup
+    const fileMap = new Map(files.map(f => [f.fileId, f]));
+
+    // Combine permission info with file data
+    const sharedFiles = permissions
+      .map(permission => {
+        const file = fileMap.get(permission.fileId);
+        if (!file) return null;
+
+        return {
+          ...file,
+          sharedBy: permission.grantedBy,
+          sharedAt: permission.grantedAt,
+          accessLevel: permission.accessLevel,
+          permissionId: permission._id
+        };
+      })
+      .filter(Boolean);
+
+    // Get total count for pagination
+    const totalCount = await FileAccess.countDocuments({
+      userId,
+      isActive: true
+    });
+
+    res.json({
+      success: true,
+      data: {
+        files: sharedFiles,
+        pagination: {
+          page,
+          limit,
+          totalCount,
+          totalPages: Math.ceil(totalCount / limit),
+          hasMore: skip + sharedFiles.length < totalCount
+        }
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
