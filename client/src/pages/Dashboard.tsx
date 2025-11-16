@@ -36,6 +36,7 @@ import { FileUploadZone } from "@/components/FileUploadZone";
 import { FileHistoryModal } from "@/components/FileHistoryModal";
 import SecureLinkModal from "@/components/SecureLinkModal";
 import FilePreviewModal from "@/components/FilePreviewModal";
+import { ShareModal } from "@/components/ShareModalTabbed";
 import { FileAnalyticsModal } from "@/components/FileAnalyticsModal";
 import { AnalyticsChart } from "@/components/AnalyticsChart";
 import { UserManagement } from "@/components/UserManagement";
@@ -210,16 +211,26 @@ const Dashboard = () => {
       if (response.ok) {
         const result = await response.json();
         setSharedFiles(result.data.files || []);
+      } else if (response.status === 404) {
+        console.log('No shared files found or endpoint not fully implemented');
+        setSharedFiles([]);
+      } else if (response.status === 401) {
+        console.warn('Authentication required for shared files');
+        setSharedFiles([]);
       } else {
         throw new Error('Failed to fetch shared files');
       }
     } catch (error) {
       console.error('Error fetching shared files:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load shared files",
-        variant: "destructive"
-      });
+      // Only show error toast for non-404/401 errors
+      if (error instanceof Error && !error.message.includes('404') && !error.message.includes('401')) {
+        toast({
+          title: "Error",
+          description: "Failed to load shared files",
+          variant: "destructive"
+        });
+      }
+      setSharedFiles([]);
     } finally {
       setSharedLoading(false);
     }
@@ -1381,7 +1392,7 @@ const Dashboard = () => {
       )}
 
       {selectedFileForSecureLink && (
-        <SecureLinkModal
+        <ShareModal
           isOpen={showSecureLinkModal}
           onClose={() => {
             setShowSecureLinkModal(false);
@@ -1389,10 +1400,6 @@ const Dashboard = () => {
           }}
           fileId={selectedFileForSecureLink.fileId}
           fileName={selectedFileForSecureLink.fileName}
-          onLinkGenerated={() => {
-            // Refresh the secure links list in the Dashboard
-            fetchSecureLinks();
-          }}
         />
       )}
 

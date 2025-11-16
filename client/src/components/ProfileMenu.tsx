@@ -62,7 +62,7 @@ export const ProfileMenu = ({ user, onLogout }: ProfileMenuProps) => {
       >
         <Avatar className="h-9 w-9 bg-gradient-primary">
           {user.profileImage ? (
-            <AvatarImage src={`http://localhost:5000${user.profileImage}`} alt={`${user.firstName} ${user.lastName}`} />
+            <AvatarImage src={apiUrl(user.profileImage)} alt={`${user.firstName} ${user.lastName}`} />
           ) : null}
           <AvatarFallback className="bg-gradient-primary text-white font-medium">
             {getUserInitials()}
@@ -79,7 +79,7 @@ export const ProfileMenu = ({ user, onLogout }: ProfileMenuProps) => {
             <div className="flex items-center space-x-3">
               <Avatar className="h-12 w-12 bg-gradient-primary">
                 {user.profileImage ? (
-                  <AvatarImage src={`http://localhost:5000${user.profileImage}`} alt={`${user.firstName} ${user.lastName}`} />
+                  <AvatarImage src={apiUrl(user.profileImage)} alt={`${user.firstName} ${user.lastName}`} />
                 ) : null}
                 <AvatarFallback className="bg-gradient-primary text-white font-semibold text-lg">
                   {getUserInitials()}

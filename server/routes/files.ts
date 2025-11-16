@@ -106,15 +106,10 @@ router.get('/my-files', async (req: Request, res: Response, next: NextFunction) 
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    // Include files uploaded by the user and files shared with the user via FileAccess
-    const accessibleFileIds = await FileAccess.find({ userId: userIdString, isActive: true }).distinct('fileId');
-
+    // Only include files uploaded by the user (not shared files)
     const files = await FileModel.find({
-      isDeleted: { $ne: true },
-      $or: [
-        { uploadedBy: userId },
-        { fileId: { $in: accessibleFileIds } }
-      ]
+      uploadedBy: userId,
+      isDeleted: { $ne: true }
     })
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -122,11 +117,8 @@ router.get('/my-files', async (req: Request, res: Response, next: NextFunction) 
       .select('-__v');
 
     const totalFiles = await FileModel.countDocuments({
-      isDeleted: { $ne: true },
-      $or: [
-        { uploadedBy: userId },
-        { fileId: { $in: accessibleFileIds } }
-      ]
+      uploadedBy: userId,
+      isDeleted: { $ne: true }
     });
 
     res.json({
@@ -338,23 +330,23 @@ router.get('/:fileId/download', async (req: Request, res: Response, next: NextFu
     const fileBuffer = await fileStorageService.getFile(file.filePath);
     res.send(fileBuffer);
 
-    // Optional notification to owner (fire-and-forget)
-    Promise.resolve().then(async () => {
-      try {
-        const owner = await User.findById(file.uploadedBy).select('email firstName lastName');
-        const downloader = await User.findById(userId).select('firstName lastName');
-        if (owner?.email && owner.email !== (downloader as any)?.email) {
-          await EmailService.sendDownloadNotification({
-            to: owner.email,
-            fileName: file.originalName,
-            downloaderName: downloader ? `${downloader.firstName} ${downloader.lastName}` : undefined,
-            downloadedAt: new Date(),
-          });
-        }
-      } catch (e) {
-        console.error('Download notification email error:', e);
-      }
-    });
+    // Download notifications disabled
+    // Promise.resolve().then(async () => {
+    //   try {
+    //     const owner = await User.findById(file.uploadedBy).select('email firstName lastName');
+    //     const downloader = await User.findById(userId).select('firstName lastName');
+    //     if (owner?.email && owner.email !== (downloader as any)?.email) {
+    //       await EmailService.sendDownloadNotification({
+    //         to: owner.email,
+    //         fileName: file.originalName,
+    //         downloaderName: downloader ? `${downloader.firstName} ${downloader.lastName}` : undefined,
+    //         downloadedAt: new Date(),
+    //       });
+    //     }
+    //   } catch (e) {
+    //     console.error('Download notification email error:', e);
+    //   }
+    // });
   } catch (error) {
     next(error);
   }
@@ -1577,6 +1569,104 @@ router.get('/shared-with-me', async (req: Request, res: Response, next: NextFunc
           totalPages: Math.ceil(totalCount / limit),
           hasMore: skip + sharedFiles.length < totalCount
         }
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get list of users who have access to a specific file
+router.get('/:fileId/shares', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileId } = req.params;
+    const ownerId = (req as any).user.id;
+
+    // Verify the file exists and belongs to the owner
+    const file = await FileModel.findOne({ fileId, uploadedBy: ownerId });
+    
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'File not found or you do not have permission to view shares'
+      });
+    }
+
+    // Find all active shares for this file
+    const shares = await FileAccess.find({
+      fileId,
+      isActive: true
+    })
+      .populate('userId', 'email firstName lastName')
+      .sort({ grantedAt: -1 });
+
+    // Format the response
+    const formattedShares = shares.map(share => ({
+      userId: (share.userId as any)._id.toString(),
+      userEmail: (share.userId as any).email,
+      userName: `${(share.userId as any).firstName} ${(share.userId as any).lastName}`,
+      accessLevel: share.accessLevel,
+      grantedAt: share.grantedAt,
+      lastAccessedAt: share.lastAccessedAt
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        fileId,
+        fileName: file.originalName,
+        shares: formattedShares,
+        totalShares: formattedShares.length
+      }
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Remove user access to a file
+router.delete('/:fileId/share/:userId', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileId, userId } = req.params;
+    const ownerId = (req as any).user.id;
+
+    // Verify the file exists and belongs to the owner
+    const file = await FileModel.findOne({ fileId, uploadedBy: ownerId });
+    
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'File not found or you do not have permission to manage shares'
+      });
+    }
+
+    // Find and remove the access permission
+    const result = await FileAccess.findOneAndDelete({
+      fileId,
+      userId
+    });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'User does not have access to this file'
+      });
+    }
+
+    console.log(`🔒 Revoked access for user ${userId} to file "${file.originalName}"`);
+
+    res.status(200).json({
+      success: true,
+      message: 'User access removed successfully',
+      data: {
+        fileId,
+        userId,
+        removedAt: new Date()
       }
     });
 

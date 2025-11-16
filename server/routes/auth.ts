@@ -99,14 +99,6 @@ router.post("/login", async (req: Request, res: Response) => {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Check if email is verified
-    if (!user.emailVerified) {
-      return res.status(403).json({ 
-        message: "Please verify your email address before logging in. Check your inbox for the verification link.",
-        requiresVerification: true
-      });
-    }
-
     // Check if 2FA is enabled
     if (user.twoFactorEnabled) {
       // If 2FA code is not provided, generate and send one
