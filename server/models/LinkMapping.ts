@@ -17,6 +17,7 @@ export interface ILinkMapping extends Document {
   status: 'active' | 'revoked' | 'expired';  // Current status of the link
   passwordHash?: string;         // Optional bcrypt hash for password-protected links
   metadata?: {                   // Optional metadata
+    file_id?: string;
     original_file_name?: string;
     file_size?: number;
     mime_type?: string;

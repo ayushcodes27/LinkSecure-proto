@@ -1385,6 +1385,7 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
         expires_at: expiresAt,
         passwordHash,
         metadata: {
+          file_id: file.fileId,
           original_file_name: file.originalName,
           file_size: file.fileSize,
           mime_type: file.mimeType
@@ -1458,11 +1459,15 @@ router.post('/:fileId/revoke-all', async (req: Request, res: Response, next: Nex
     const LinkMapping = (await import('../models/LinkMapping')).default;
 
     // Revoke all links for this file (update status to 'revoked')
-    // LinkMappings store blob_path which includes fileId in the path
+    // Match by fileId in metadata OR blob_path (for backward compatibility)
+    const blobPath = file.blobName || file.fileName;
     const updateResult = await LinkMapping.updateMany(
       { 
         owner_id: userId,
-        blob_path: new RegExp(fileId, 'i') // Match fileId in blob path
+        $or: [
+          { 'metadata.file_id': fileId },
+          { blob_path: blobPath }
+        ]
       },
       { 
         $set: { 
