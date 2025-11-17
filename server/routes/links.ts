@@ -512,6 +512,23 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       }
     }
 
+    // Extract file metadata
+    const originalFileName = linkMapping.metadata?.original_file_name || 'file';
+    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
+    const fileSize = linkMapping.metadata?.file_size;
+
+    // If this is just a check request (not actual content fetch), return metadata only
+    if (req.query.check === 'true') {
+      console.log(`✅ Access check passed for: ${short_code}`);
+      return res.status(200).json({
+        success: true,
+        fileName: originalFileName,
+        mimeType,
+        fileSize,
+        requiresPassword: false
+      });
+    }
+
     // Generate Azure SAS URL
     const azureSAS = getAzureSASService();
     const sasUrl = await azureSAS.generateRedirectSASUrl(linkMapping.blob_path);
@@ -536,11 +553,6 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
         message: 'File could not be retrieved from storage'
       });
     }
-
-    // Extract file metadata
-    const originalFileName = linkMapping.metadata?.original_file_name || 'file';
-    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
-    const fileSize = linkMapping.metadata?.file_size;
 
     // Set response headers for INLINE viewing (not download)
     res.setHeader('Content-Type', mimeType);

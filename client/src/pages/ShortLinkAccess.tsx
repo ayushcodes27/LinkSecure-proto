@@ -42,13 +42,14 @@ const ShortLinkAccess = () => {
     setError(null);
 
     try {
-      // Try to fetch the file content (just headers first)
-      const response = await fetch(contentUrl, {
-        method: 'HEAD',
+      // Check file access status (use a special query param to avoid downloading)
+      const checkUrl = `${contentUrl}?check=true`;
+      const response = await fetch(checkUrl, {
+        method: 'GET',
       });
 
       if (response.ok) {
-        // Public file, no password needed
+        // Public file, no password needed - get file info from headers
         const contentDisposition = response.headers.get('content-disposition');
         const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'File';
         setFileName(filename);
@@ -64,19 +65,28 @@ const ShortLinkAccess = () => {
       }
 
       if (response.status === 401) {
-        // Password required
-        const data = await response.json();
-        setRequiresPassword(true);
-        setFileName(data.fileName || 'Protected File');
-        setLoading(false);
-        return;
+        // Password required - read JSON response
+        try {
+          const data = await response.json();
+          setRequiresPassword(true);
+          setFileName(data.fileName || 'Protected File');
+          setLoading(false);
+          return;
+        } catch (e) {
+          // Fallback if JSON parsing fails
+          setRequiresPassword(true);
+          setFileName('Protected File');
+          setLoading(false);
+          return;
+        }
       }
 
       if (response.status === 404) {
         setError('File not found or link has expired');
         setLoading(false);
       } else if (response.status === 410) {
-        setError('This link has been revoked or has expired');
+        const data = await response.json().catch(() => ({}));
+        setError(data.message || 'This link has been revoked or has expired');
         setLoading(false);
       } else {
         setError('Failed to access file');
@@ -115,19 +125,17 @@ const ShortLinkAccess = () => {
       setDownloadToken(token);
       setRequiresPassword(false);
       
-      // Fetch file info with token
-      const infoResponse = await fetch(`${contentUrl}?token=${token}`, {
-        method: 'HEAD',
+      // Fetch file info with token using check parameter
+      const infoResponse = await fetch(`${contentUrl}?token=${token}&check=true`, {
+        method: 'GET',
       });
       
       if (infoResponse.ok) {
-        const contentDisposition = infoResponse.headers.get('content-disposition');
-        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'File';
-        setFileName(filename);
+        const data = await infoResponse.json();
+        setFileName(data.fileName || 'File');
         
-        const contentLength = infoResponse.headers.get('content-length');
-        if (contentLength) {
-          const sizeInMB = (parseInt(contentLength) / (1024 * 1024)).toFixed(2);
+        if (data.fileSize) {
+          const sizeInMB = (parseInt(data.fileSize) / (1024 * 1024)).toFixed(2);
           setFileSize(`${sizeInMB} MB`);
         }
       }
