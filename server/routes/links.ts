@@ -236,9 +236,9 @@ router.post('/create', async (req: Request, res: Response) => {
 
     await linkMapping.save();
 
-    // Construct the complete link URL
-    const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-    const linkUrl = `${baseUrl}/s/${short_code}`;
+    // Construct the frontend viewer URL (not backend direct download)
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
+    const linkUrl = `${frontendUrl}/#/s/${short_code}`;
 
     console.log('✅ Created new short link:');
     console.log(`  🔗 Short Code: ${short_code}`);
@@ -400,12 +400,223 @@ router.post('/verify/:short_code', async (req: Request, res: Response) => {
  * - Access count is tracked in the database
  * - Original filename and MIME type are preserved from metadata
  */
+
+/**
+ * GET /api/links/:short_code/content
+ * Stream file content inline (for preview/display, not download)
+ * This endpoint serves files with Content-Disposition: inline
+ * Use case: Embedding files in viewer pages, PDFs, images, videos
+ * Features:
+ * - Same validation as download route
+ * - Serves content inline instead of attachment
+ * - Supports watermarking, email capture workflows
+ * - CORS-enabled for frontend embedding
+ */
+router.get('/:short_code/content', async (req: Request, res: Response) => {
+  try {
+    const { short_code } = req.params;
+
+    console.log(`🔍 Content stream request for: ${short_code}`);
+    
+    // Validate short code format
+    if (!isValidShortCode(short_code)) {
+      console.warn(`⚠️  Invalid short code format: ${short_code}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid link format'
+      });
+    }
+
+    // Look up the link mapping in database
+    const linkMapping = await LinkMapping.findByShortCode(short_code);
+
+    if (!linkMapping) {
+      console.warn(`⚠️  Short code not found: ${short_code}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Link does not exist or has been deleted'
+      });
+    }
+
+    // Check if the link has been revoked
+    if (linkMapping.status === 'revoked') {
+      console.warn(`⚠️  Link revoked: ${short_code}`);
+      return res.status(410).json({
+        success: false,
+        error: 'Gone',
+        message: 'This link has been revoked by the owner',
+        status: 'revoked'
+      });
+    }
+
+    // Check if link has expired
+    if (isExpired(linkMapping.expires_at)) {
+      console.warn(`⚠️  Link expired: ${short_code}`);
+      
+      // Auto-update status to expired
+      if (linkMapping.status === 'active') {
+        linkMapping.status = 'expired';
+        linkMapping.is_active = false;
+        await linkMapping.save();
+      }
+      
+      return res.status(410).json({
+        success: false,
+        error: 'Gone',
+        message: 'This link has expired',
+        status: 'expired',
+        expiredAt: linkMapping.expires_at
+      });
+    }
+
+    // Check if link is password-protected
+    if (linkMapping.passwordHash) {
+      const downloadToken = req.query.token as string;
+
+      if (!downloadToken) {
+        console.warn(`⚠️  Password-protected content accessed without token: ${short_code}`);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Password required',
+          requiresPassword: true,
+          fileName: linkMapping.metadata?.original_file_name || 'Protected File'
+        });
+      }
+
+      // Verify JWT token
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        const decoded = jwt.verify(downloadToken, JWT_SECRET) as { short_code: string };
+
+        if (decoded.short_code !== short_code) {
+          console.warn(`⚠️  Token mismatch: ${short_code}`);
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Invalid download token'
+          });
+        }
+
+        console.log(`🔓 Valid token for content stream: ${short_code}`);
+      } catch (error) {
+        console.warn(`⚠️  Invalid token: ${short_code}`);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Download token is invalid or expired',
+          requiresPassword: true
+        });
+      }
+    }
+
+    // Generate Azure SAS URL
+    const azureSAS = getAzureSASService();
+    const sasUrl = await azureSAS.generateRedirectSASUrl(linkMapping.blob_path);
+
+    console.log('✅ Streaming content inline:');
+    console.log(`  🔗 Short Code: ${short_code}`);
+    console.log(`  📄 Blob Path: ${linkMapping.blob_path}`);
+    console.log(`  📊 Access Count: ${linkMapping.access_count + 1}`);
+    console.log(`  🖼️  Serving as: INLINE (not download)`);
+
+    // Fetch the file from Azure as a stream
+    const azureResponse = await axios.get(sasUrl, {
+      responseType: 'stream',
+      validateStatus: (status) => status < 500
+    });
+
+    if (azureResponse.status !== 200) {
+      console.error(`❌ Azure error ${azureResponse.status} for: ${linkMapping.blob_path}`);
+      return res.status(azureResponse.status).json({
+        success: false,
+        error: 'Storage Error',
+        message: 'File could not be retrieved from storage'
+      });
+    }
+
+    // Extract file metadata
+    const originalFileName = linkMapping.metadata?.original_file_name || 'file';
+    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
+    const fileSize = linkMapping.metadata?.file_size;
+
+    // Set response headers for INLINE viewing (not download)
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${originalFileName}"`);
+    
+    if (fileSize) {
+      res.setHeader('Content-Length', fileSize.toString());
+    }
+
+    // Security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    // CORS headers for frontend embedding
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    // Increment access count
+    await LinkMapping.incrementAccessCount(short_code);
+
+    console.log(`📺 Streaming inline: ${originalFileName} (${mimeType})`);
+
+    // Pipe the Azure stream to response
+    azureResponse.data.pipe(res);
+
+    // Error handlers
+    azureResponse.data.on('error', (streamError: Error) => {
+      console.error('❌ Stream error:', streamError);
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
+    });
+
+    res.on('finish', () => {
+      console.log(`✅ Content streamed successfully: ${short_code}`);
+    });
+
+  } catch (error) {
+    console.error('❌ Error streaming content:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'An error occurred while processing your request'
+    });
+  }
+});
+
+/**
+ * GET /s/:short_code (LEGACY - Redirects to Frontend Viewer)
+ * This route is kept for backward compatibility
+ * Old links using backend URLs will automatically redirect to the frontend viewer
+ */
 router.get('/:short_code', async (req: Request, res: Response) => {
   try {
     const { short_code } = req.params;
 
-    console.log(`🔍 Attempting to access short code: ${short_code}`);
+    console.log(`🔄 Legacy download link accessed: ${short_code} - Redirecting to frontend viewer`);
     
+    // Validate short code format
+    if (!isValidShortCode(short_code)) {
+      console.warn(`⚠️  Invalid short code format: ${short_code}`);
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
+      return res.redirect(`${frontendUrl}/#/error?message=Invalid+link+format`);
+    }
+
+    // Redirect to frontend viewer page
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
+    const viewerUrl = `${frontendUrl}/#/s/${short_code}`;
+    
+    console.log(`🔗 Redirecting to: ${viewerUrl}`);
+    return res.redirect(viewerUrl);
+
+    /* OLD IMPLEMENTATION - Now handled by frontend viewer + /api/links/:short_code/content
     // Validate short code format
     if (!isValidShortCode(short_code)) {
       console.warn(`⚠️  Invalid short code format: ${short_code}`);
@@ -548,7 +759,7 @@ router.get('/:short_code', async (req: Request, res: Response) => {
         } else {
           // Browser navigation - redirect to frontend
           console.log(`🔄 Redirecting to frontend password page (hash routing)`);
-          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:8080';
+          const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
           // Use hash-based route so backend hosting doesn't need rewrite rules
           return res.redirect(`${frontendUrl}/#/s/${short_code}`);
         }
@@ -698,6 +909,12 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       </html>
     `);
   }
+  END OF COMMENTED OUT CODE */
+  } catch (error) {
+    console.error('❌ Error redirecting to frontend:', error);
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
+    return res.redirect(`${frontendUrl}/#/error?message=Server+error`);
+  }
 });
 
 /**
@@ -783,7 +1000,7 @@ router.get('/user/:owner_id', async (req: Request, res: Response) => {
         access_count: link.access_count,
         last_accessed_at: link.last_accessed_at,
         metadata: link.metadata,
-        link_url: `${process.env.BASE_URL || 'http://localhost:5000'}/s/${link.short_code}`
+        link_url: `${process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080'}/#/s/${link.short_code}`
       }))
     });
 

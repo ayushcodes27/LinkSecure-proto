@@ -9,7 +9,8 @@ import {
   Loader2,
   Lock,
   AlertCircle,
-  CheckCircle
+  FileText,
+  Eye
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api";
@@ -19,12 +20,16 @@ const ShortLinkAccess = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [downloadToken, setDownloadToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
+  const [fileSize, setFileSize] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
+
+  const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const contentUrl = `${backendUrl}/api/links/${shortCode}/content`;
 
   useEffect(() => {
     attemptAccess();
@@ -37,12 +42,26 @@ const ShortLinkAccess = () => {
     setError(null);
 
     try {
-      // Try to access the file directly from backend
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${backendUrl}/s/${shortCode}`, {
-        method: 'GET',
-        redirect: 'manual' // Don't follow redirects
+      // Try to fetch the file content (just headers first)
+      const response = await fetch(contentUrl, {
+        method: 'HEAD',
       });
+
+      if (response.ok) {
+        // Public file, no password needed
+        const contentDisposition = response.headers.get('content-disposition');
+        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'File';
+        setFileName(filename);
+        
+        const contentLength = response.headers.get('content-length');
+        if (contentLength) {
+          const sizeInMB = (parseInt(contentLength) / (1024 * 1024)).toFixed(2);
+          setFileSize(`${sizeInMB} MB`);
+        }
+        
+        setLoading(false);
+        return;
+      }
 
       if (response.status === 401) {
         // Password required
@@ -53,48 +72,14 @@ const ShortLinkAccess = () => {
         return;
       }
 
-      if (response.type === 'opaqueredirect' || response.status === 0) {
-        // Backend tried to redirect - this means password is required
-        setRequiresPassword(true);
-        setFileName('Protected File');
-        setLoading(false);
-        return;
-      }
-
-      if (response.ok) {
-        // No password required - download directly
-        const blob = await response.blob();
-        const contentDisposition = response.headers.get('content-disposition');
-        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'download';
-        
-        downloadBlob(blob, filename);
-        
-        toast({
-          title: "Success",
-          description: "File downloaded successfully",
-        });
-        
-        setLoading(false);
-      } else if (response.status === 404) {
+      if (response.status === 404) {
         setError('File not found or link has expired');
         setLoading(false);
       } else if (response.status === 410) {
-        setError('This link has expired');
+        setError('This link has been revoked or has expired');
         setLoading(false);
       } else {
-        // Check if response is JSON (error) or if password is required
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          const data = await response.json();
-          if (data.requiresPassword) {
-            setRequiresPassword(true);
-            setFileName(data.fileName || 'Protected File');
-          } else {
-            setError(data.message || 'Failed to access file');
-          }
-        } else {
-          setError('Failed to access file');
-        }
+        setError('Failed to access file');
         setLoading(false);
       }
     } catch (err) {
@@ -110,7 +95,7 @@ const ShortLinkAccess = () => {
     setPasswordError("");
 
     try {
-      // Step 1: Verify password and get JWT token
+      // Verify password and get JWT token
       const verifyResponse = await fetch(apiUrl(`/api/v1/links/verify/${shortCode}`), {
         method: 'POST',
         headers: {
@@ -129,43 +114,40 @@ const ShortLinkAccess = () => {
       
       setDownloadToken(token);
       setRequiresPassword(false);
-
-      // Step 2: Download file with token
-      const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const downloadResponse = await fetch(`${backendUrl}/s/${shortCode}?token=${token}`, {
-        method: 'GET',
+      
+      // Fetch file info with token
+      const infoResponse = await fetch(`${contentUrl}?token=${token}`, {
+        method: 'HEAD',
       });
-
-      if (downloadResponse.ok) {
-        const blob = await downloadResponse.blob();
-        const contentDisposition = downloadResponse.headers.get('content-disposition');
-        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || fileName || 'download';
+      
+      if (infoResponse.ok) {
+        const contentDisposition = infoResponse.headers.get('content-disposition');
+        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'File';
+        setFileName(filename);
         
-        downloadBlob(blob, filename);
-        
-        toast({
-          title: "Success",
-          description: "File downloaded successfully",
-        });
-      } else {
-        const data = await downloadResponse.json();
-        throw new Error(data.message || 'Download failed');
+        const contentLength = infoResponse.headers.get('content-length');
+        if (contentLength) {
+          const sizeInMB = (parseInt(contentLength) / (1024 * 1024)).toFixed(2);
+          setFileSize(`${sizeInMB} MB`);
+        }
       }
+
+      toast({
+        title: "Access granted",
+        description: "Loading file preview...",
+      });
     } catch (err: any) {
       setPasswordError(err.message);
       throw err; // Re-throw to let PasswordPromptModal handle it
     }
   };
 
-  const downloadBlob = (blob: Blob, filename: string) => {
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+  const handleDownload = () => {
+    const finalFileUrl = downloadToken 
+      ? `${contentUrl}?token=${downloadToken}&download=1` 
+      : `${contentUrl}?download=1`;
+    
+    window.open(finalFileUrl, '_blank');
   };
 
   if (loading) {
@@ -208,55 +190,94 @@ const ShortLinkAccess = () => {
     );
   }
 
-  if (downloadToken) {
+  // Show password modal if required
+  if (requiresPassword) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <CardTitle>Download Complete</CardTitle>
-            </div>
-            <CardDescription>Your file has been downloaded successfully.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              className="w-full" 
-              variant="outline" 
-              onClick={() => navigate('/')}
-            >
-              Go to Home
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-[400px]">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-primary" />
+                <CardTitle>Password Required</CardTitle>
+              </div>
+              <CardDescription>
+                This file is password protected. Enter the password to view it.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <PasswordPromptModal
+          isOpen={requiresPassword}
+          onClose={() => navigate('/')}
+          onSubmit={handlePasswordSubmit}
+          fileName={fileName}
+          error={passwordError}
+        />
+      </>
     );
   }
 
+  // Success! Show the file viewer with iframe
+  const finalFileUrl = downloadToken 
+    ? `${contentUrl}?token=${downloadToken}` 
+    : contentUrl;
+
   return (
-    <>
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <CardTitle>Secure File Access</CardTitle>
-            </div>
-            <CardDescription>
-              Preparing your secure download...
-            </CardDescription>
-          </CardHeader>
-        </Card>
+    <div className="h-screen w-screen flex flex-col bg-background">
+      {/* Header bar with file info and download button */}
+      <div className="flex items-center justify-between px-6 py-3 border-b bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-sm font-semibold">{fileName}</h1>
+            {fileSize && (
+              <p className="text-xs text-muted-foreground">{fileSize}</p>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+          >
+            Close
+          </Button>
+        </div>
       </div>
 
-      <PasswordPromptModal
-        isOpen={requiresPassword}
-        onClose={() => navigate('/')}
-        onSubmit={handlePasswordSubmit}
-        fileName={fileName}
-        error={passwordError}
-      />
-    </>
+      {/* File preview iframe */}
+      <div className="flex-1 relative">
+        <iframe
+          src={finalFileUrl}
+          className="absolute inset-0 w-full h-full border-0"
+          title="File Preview"
+          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+        />
+      </div>
+
+      {/* Optional: Footer with powered by LinkSecure */}
+      <div className="px-6 py-2 border-t bg-card/30 backdrop-blur-sm">
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+          <Shield className="h-3 w-3" />
+          <span>Secured by LinkSecure</span>
+        </div>
+      </div>
+    </div>
   );
 };
 

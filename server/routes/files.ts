@@ -1398,8 +1398,11 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
         expires_at: linkMapping.expires_at
       });
 
-      const baseUrl = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:5000';
-      const shortLink = `${baseUrl}/s/${shortCode}`;
+      // Use frontend URL for the viewer page (not backend direct download)
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:8080';
+      const shortLink = `${frontendUrl}/#/s/${shortCode}`;
+
+      console.log(`🔗 Generated frontend viewer URL: ${shortLink}`);
 
       return res.status(201).json({
         success: true,
