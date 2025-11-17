@@ -417,7 +417,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName, onFileShared }: 
                       <Input
                         type="password"
                         id="password"
-                        placeholder="Set a password"
+                        placeholder=""
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                       />

@@ -407,7 +407,7 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
                     <Input
                       id="password"
                       type="password"
-                      placeholder="Set a password"
+                      placeholder=""
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
