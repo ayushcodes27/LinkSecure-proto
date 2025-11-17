@@ -35,6 +35,7 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName, onFileShared }: 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedLink, setGeneratedLink] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [isRevokingAll, setIsRevokingAll] = useState(false);
   
   const { toast } = useToast();
   const token = localStorage.getItem('token');
@@ -221,6 +222,52 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName, onFileShared }: 
     }
   };
 
+  const handleRevokeAllLinks = async () => {
+    if (!token) return;
+
+    // Confirmation dialog
+    const confirmed = window.confirm(
+      `Are you sure you want to revoke ALL links for "${fileName}"?\n\nThis will disable all existing share links for this file. This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsRevokingAll(true);
+    try {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/revoke-all`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "All links revoked",
+          description: `Successfully revoked ${result.data.linksAffected} link(s) for this file`,
+        });
+        // Clear the generated link if it exists
+        setGeneratedLink("");
+        setQrDataUrl(null);
+        if (onFileShared) onFileShared();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to revoke all links');
+      }
+    } catch (error) {
+      console.error('Error revoking all links:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to revoke all links",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRevokingAll(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -285,10 +332,23 @@ export const ShareModal = ({ isOpen, onClose, fileId, fileName, onFileShared }: 
           <TabsContent value="generate" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Public Link Settings</CardTitle>
-                <CardDescription>
-                  Create and customize a public, shareable link for this file
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Public Link Settings</CardTitle>
+                    <CardDescription>
+                      Create and customize a public, shareable link for this file
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRevokeAllLinks}
+                    disabled={isRevokingAll}
+                    className="text-destructive hover:text-destructive border-destructive hover:bg-destructive/10"
+                  >
+                    {isRevokingAll ? "Revoking..." : "Revoke All Links"}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {generatedLink ? (

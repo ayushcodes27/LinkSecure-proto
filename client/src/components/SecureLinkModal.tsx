@@ -63,6 +63,7 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
   const [loading, setLoading] = useState(false);
   const [linksLoading, setLinksLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isRevokingAll, setIsRevokingAll] = useState(false);
   // Security options
   const [password, setPassword] = useState("");
   const [requireEmail, setRequireEmail] = useState(false);
@@ -256,6 +257,54 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
         description: "Failed to revoke secure link",
         variant: "destructive"
       });
+    }
+  };
+
+  // Revoke all links for this file
+  const revokeAllLinks = async () => {
+    if (!token) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to revoke ALL links for "${fileName}"?\n\nThis will disable all existing share links for this file. This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setIsRevokingAll(true);
+    try {
+      const response = await fetch(apiUrl(`/api/files/${fileId}/revoke-all`), {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "All links revoked",
+          description: `Successfully revoked ${result.data.linksAffected} link(s)`,
+        });
+        // Clear generated link and refresh list
+        setGeneratedLink(null);
+        fetchUserLinks();
+        if (onLinkGenerated) {
+          onLinkGenerated();
+        }
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to revoke all links');
+      }
+    } catch (error) {
+      console.error('Error revoking all links:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to revoke all links",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRevokingAll(false);
     }
   };
 
@@ -522,18 +571,29 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
                       Manage all your active and expired secure links
                     </CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={fetchUserLinks}
-                    disabled={linksLoading}
-                  >
-                    {linksLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={revokeAllLinks}
+                      disabled={isRevokingAll || linksLoading}
+                      className="border-destructive"
+                    >
+                      {isRevokingAll ? "Revoking..." : "Revoke All Links"}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={fetchUserLinks}
+                      disabled={linksLoading}
+                    >
+                      {linksLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>

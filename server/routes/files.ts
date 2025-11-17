@@ -1437,6 +1437,58 @@ router.post('/:fileId/generate-link', async (req: Request, res: Response, next: 
   }
 });
 
+// Revoke all links for a specific file
+router.post('/:fileId/revoke-all', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { fileId } = req.params;
+    const userId = (req as any).user.id;
+
+    // Verify file ownership
+    const file = await FileModel.findOne({ fileId, uploadedBy: userId });
+
+    if (!file) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'File not found or you do not have permission'
+      });
+    }
+
+    // Import LinkMapping model
+    const LinkMapping = (await import('../models/LinkMapping')).default;
+
+    // Revoke all links for this file (update status to 'revoked')
+    // LinkMappings store blob_path which includes fileId in the path
+    const updateResult = await LinkMapping.updateMany(
+      { 
+        owner_id: userId,
+        blob_path: new RegExp(fileId, 'i') // Match fileId in blob path
+      },
+      { 
+        $set: { 
+          status: 'revoked',
+          is_active: false // Also set is_active for backward compatibility
+        } 
+      }
+    );
+
+    console.log(`✅ Revoked ${updateResult.modifiedCount} links for file ${fileId} by user ${userId}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'All links for this file have been revoked',
+      data: {
+        linksAffected: updateResult.modifiedCount,
+        fileId: file.fileId,
+        fileName: file.originalName
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error revoking all links:', error);
+    next(error);
+  }
+});
+
 // Track Azure SAS URL access (no authentication required)
 router.post('/track-sas-access', async (req: Request, res: Response, next: NextFunction) => {
   try {
