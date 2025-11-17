@@ -35,6 +35,8 @@ interface SecureLink {
   linkId: string;
   secureToken: string;
   secureUrl: string;
+  short_code?: string;
+  status?: 'active' | 'revoked' | 'expired';
   expiresAt: string;
   maxAccessCount?: number;
   fileName: string;
@@ -195,10 +197,36 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
   };
 
   // Revoke secure link
-  const revokeSecureLink = async (linkId: string) => {
+  const revokeSecureLink = async (linkId: string, shortCode?: string) => {
     if (!token) return;
     
     try {
+      // Try new endpoint first if short_code is available
+      if (shortCode) {
+        const response = await fetch(apiUrl(`/api/links/${shortCode}/revoke`), {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          toast({
+            title: "Success",
+            description: "Secure link revoked successfully",
+          });
+          // Refresh user links in modal
+          fetchUserLinks();
+          // Notify parent component to refresh its secure links list
+          if (onLinkGenerated) {
+            onLinkGenerated();
+          }
+          return;
+        }
+      }
+      
+      // Fallback to old endpoint for backward compatibility
       const response = await fetch(apiUrl(`/api/files/secure-links/${linkId}`), {
         method: 'DELETE',
         headers: {
@@ -528,12 +556,15 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
                         <div className="flex-1 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{link.originalName}</span>
-                            <Badge variant={link.isActive && !isExpired(link.expiresAt) ? "default" : "secondary"}>
-                              {link.isActive && !isExpired(link.expiresAt) ? "Active" : "Inactive"}
+                            <Badge variant={
+                              link.status === 'revoked' ? "destructive" :
+                              link.status === 'expired' || isExpired(link.expiresAt) ? "secondary" :
+                              link.isActive ? "default" : "secondary"
+                            }>
+                              {link.status === 'revoked' ? 'Revoked' :
+                               link.status === 'expired' || isExpired(link.expiresAt) ? 'Expired' :
+                               link.isActive ? 'Active' : 'Inactive'}
                             </Badge>
-                            {isExpired(link.expiresAt) && (
-                              <Badge variant="destructive">Expired</Badge>
-                            )}
                           </div>
                           
                           <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
@@ -578,9 +609,10 @@ const SecureLinkModal = ({ isOpen, onClose, fileId, fileName, onLinkGenerated }:
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => revokeSecureLink(link.linkId)}
-                            disabled={!link.isActive || isExpired(link.expiresAt)}
+                            onClick={() => revokeSecureLink(link.linkId, link.short_code)}
+                            disabled={link.status === 'revoked' || !link.isActive || isExpired(link.expiresAt)}
                             className="text-destructive hover:text-destructive"
+                            title={link.status === 'revoked' ? 'Already revoked' : 'Revoke link'}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
