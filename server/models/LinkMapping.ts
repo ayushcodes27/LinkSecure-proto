@@ -14,6 +14,7 @@ export interface ILinkMapping extends Document {
   access_count: number;          // Number of times the link has been accessed
   last_accessed_at?: Date;       // Last time the link was accessed
   is_active: boolean;            // Whether the link is still active
+  status: 'active' | 'revoked' | 'expired';  // Current status of the link
   passwordHash?: string;         // Optional bcrypt hash for password-protected links
   metadata?: {                   // Optional metadata
     original_file_name?: string;
@@ -80,6 +81,13 @@ const LinkMappingSchema = new Schema<ILinkMapping>(
       default: true,
       index: true,
       description: "Whether the link is active or has been deactivated"
+    },
+    status: {
+      type: String,
+      enum: ['active', 'revoked', 'expired'],
+      default: 'active',
+      index: true,
+      description: "Current status of the link: active, revoked, or expired"
     },
     passwordHash: {
       type: String,

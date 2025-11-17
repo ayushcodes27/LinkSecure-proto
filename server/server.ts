@@ -60,6 +60,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 // Short link routes - separate endpoints
+app.use("/api/links", linkRoutes);      // GET /api/links/my-links, PATCH /api/links/:short_code/revoke
 app.use("/api/v1/links", linkRoutes);  // POST /api/v1/links/create
 app.use("/s", linkRoutes);              // GET /s/:short_code (redirection endpoint)
 

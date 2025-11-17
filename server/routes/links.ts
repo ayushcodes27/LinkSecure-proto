@@ -10,8 +10,138 @@ import {
   calculateExpiryTime,
   isExpired 
 } from '../services/linkUtils';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
+
+/**
+ * GET /api/links/my-links
+ * Get all links created by the authenticated user
+ * 
+ * Authentication: Required (Bearer Token)
+ * 
+ * Response:
+ * {
+ *   "success": true,
+ *   "links": [
+ *     {
+ *       "short_code": "xyz123ab",
+ *       "status": "active",
+ *       "blob_path": "userId/file.pdf",
+ *       "created_at": "2024-01-15T10:30:00.000Z",
+ *       "expires_at": "2024-01-16T10:30:00.000Z",
+ *       "access_count": 5,
+ *       "metadata": { ... }
+ *     }
+ *   ]
+ * }
+ */
+router.get('/my-links', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    
+    // Find all links created by this user, sorted by creation date (newest first)
+    const myLinks = await LinkMapping.find({ owner_id: userId }).sort({ created_at: -1 });
+    
+    return res.status(200).json({
+      success: true,
+      links: myLinks
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user links:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to fetch user links'
+    });
+  }
+});
+
+/**
+ * PATCH /api/links/:short_code/revoke
+ * Revoke a specific link by updating its status to 'revoked'
+ * 
+ * Authentication: Required (Bearer Token)
+ * 
+ * URL Parameters:
+ * - short_code: 8-character alphanumeric identifier
+ * 
+ * Response (Success):
+ * {
+ *   "success": true,
+ *   "message": "Link successfully revoked",
+ *   "link": { ... }
+ * }
+ * 
+ * Response (Not Found):
+ * {
+ *   "success": false,
+ *   "error": "Not Found",
+ *   "message": "Link not found"
+ * }
+ * 
+ * Response (Forbidden):
+ * {
+ *   "success": false,
+ *   "error": "Forbidden",
+ *   "message": "You do not own this link"
+ * }
+ */
+router.patch('/:short_code/revoke', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { short_code } = req.params;
+    const userId = (req as any).user.id;
+    
+    // Validate short code format
+    if (!isValidShortCode(short_code)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid short code format'
+      });
+    }
+    
+    // Find the link in the database
+    const link = await LinkMapping.findOne({ short_code });
+    
+    if (!link) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Link not found'
+      });
+    }
+    
+    // Validate ownership
+    if (link.owner_id !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Forbidden',
+        message: 'You do not own this link'
+      });
+    }
+    
+    // Revoke the link
+    link.status = 'revoked';
+    link.is_active = false; // Also set is_active to false for backward compatibility
+    await link.save();
+    
+    console.log(`✅ Link revoked: ${short_code} by user ${userId}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Link successfully revoked',
+      link
+    });
+  } catch (error) {
+    console.error('❌ Error revoking link:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to revoke link'
+    });
+  }
+});
 
 /**
  * POST /api/v1/links/create
@@ -332,9 +462,43 @@ router.get('/:short_code', async (req: Request, res: Response) => {
       `);
     }
 
+    // Check if the link has been revoked
+    if (linkMapping.status === 'revoked') {
+      console.warn(`⚠️  Link revoked: ${short_code}`);
+      return res.status(410).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Link Revoked - LinkSecure</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+            h1 { color: #e74c3c; }
+            p { color: #555; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚫 Link Revoked</h1>
+            <p>This link has been revoked by the owner.</p>
+            <p><small>Error Code: 410 Gone</small></p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
     // Check if link has expired
     if (isExpired(linkMapping.expires_at)) {
       console.warn(`⚠️  Link expired: ${short_code} (expired at ${linkMapping.expires_at.toISOString()})`);
+      
+      // Auto-update status to expired
+      if (linkMapping.status === 'active') {
+        linkMapping.status = 'expired';
+        linkMapping.is_active = false;
+        await linkMapping.save();
+      }
+      
       return res.status(410).send(`
         <!DOCTYPE html>
         <html>
