@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Eye, EyeOff, Shield, Clock, Users } from "lucide-react";
+import { Mail, Eye, EyeOff, Shield, Clock, Users, Lock, Zap, Database } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api";
 import ThemeToggle from "@/components/ThemeToggle";
+import InteractiveGlobe from "@/components/InteractiveGlobe";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -22,6 +23,22 @@ const Login = () => {
   const [requiresVerification, setRequiresVerification] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Rotating tagline
+  const taglines = [
+    "End-to-end encrypted file sharing for professionals.",
+    "Your Data, Your Key. Zero-Knowledge Protected.",
+    "Geo-Fenced Access. Compliant Sharing.",
+    "Real-Time Revocation. Instant Control."
+  ];
+  const [currentTagline, setCurrentTagline] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTagline((prev) => (prev + 1) % taglines.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -168,63 +185,53 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Left Side - Gradient with Content */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary to-primary/80 p-12 flex-col justify-between">
-        <div className="space-y-8">
+    <div className="h-screen bg-background flex overflow-hidden">
+      {/* Left Side - Branding & Globe */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-slate-950">
+        {/* Logo - Top Left */}
+        <div className="absolute top-8 left-8 z-10">
           <Link to="/" className="flex items-center space-x-3 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-white/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative p-3 rounded-2xl bg-white/20 backdrop-blur-sm ring-1 ring-white/20">
-                <Shield className="w-8 h-8 text-white transition-transform duration-300 group-hover:scale-110" />
+              <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative p-3 rounded-2xl bg-slate-800/50 backdrop-blur-sm ring-1 ring-blue-500/30 border border-blue-500/20">
+                <Shield className="w-8 h-8 text-blue-400 transition-transform duration-300 group-hover:scale-110 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
               </div>
             </div>
             <div>
-              <span className="text-white text-xl font-bold">LinkSecure</span>
+              <span className="text-white text-xl font-bold tracking-tight">LinkSecure</span>
+              <div className="h-px w-full bg-gradient-to-r from-blue-500/50 to-transparent mt-1" />
             </div>
           </Link>
-          
-          <div className="space-y-6">
-            <h2 className="text-white text-3xl font-bold">Welcome back to secure file sharing</h2>
-            <p className="text-blue-50 text-lg">
-              Access your files from anywhere. Share securely with end-to-end encryption. Your trusted file sharing platform.
+        </div>
+        
+        {/* Tagline - Above Globe */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center space-y-4 max-w-lg px-8">
+          <h1 className="text-3xl font-bold text-white leading-tight">
+            Security that moves at your speed.
+          </h1>
+          <div className="min-h-[3rem] flex items-center justify-center overflow-hidden">
+            <p key={currentTagline} className="text-base text-slate-200 animate-in fade-in duration-500 leading-relaxed">
+              {taglines[currentTagline]}
             </p>
           </div>
-
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-medium">Bank-level security</p>
-                <p className="text-blue-100">All files protected with 256-bit encryption</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
-                <Users className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-medium">Trusted by thousands</p>
-                <p className="text-blue-100">Join 100,000+ users worldwide</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="bg-white/20 backdrop-blur-sm p-3 rounded-xl">
-                <Clock className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-white font-medium">24/7 access</p>
-                <p className="text-blue-100">Your files available anytime, anywhere</p>
-              </div>
-            </div>
-          </div>
+        </div>
+        
+        {/* 3D Hex-Grid Globe - Positioned at bottom center, partially cut off */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 w-[600px] h-[600px] pointer-events-auto">
+          <InteractiveGlobe />
         </div>
       </div>
 
       {/* Right Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative">
+        {/* Back to Home - Top Right */}
+        <Link
+          to="/"
+          className="absolute top-6 right-6 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+        >
+          ← Back to Home
+        </Link>
+        
         <div className="w-full max-w-md space-y-8">
           {/* Mobile Logo */}
           <Link to="/" className="lg:hidden flex items-center justify-center space-x-3 mb-8 group">
@@ -286,7 +293,7 @@ const Login = () => {
                   value={email}
                   onChange={handleEmailChange}
                   disabled={requires2FA}
-                  className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${emailError ? 'border-red-500' : ''}`}
+                  className={`pl-10 h-11 dark:bg-slate-900 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${emailError ? 'border-red-500' : ''}`}
                   required
                 />
               </div>
@@ -306,7 +313,7 @@ const Login = () => {
                   value={password}
                   onChange={handlePasswordChange}
                   disabled={requires2FA}
-                  className={`pl-10 pr-10 h-11 dark:bg-slate-900 dark:border-slate-700 ${passwordError ? 'border-red-500' : ''}`}
+                  className={`pl-10 pr-10 h-11 dark:bg-slate-900 dark:border-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${passwordError ? 'border-red-500' : ''}`}
                   required
                 />
                 <button
@@ -369,7 +376,7 @@ const Login = () => {
 
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 h-11 shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/50 h-11 transition-all duration-200"
               disabled={isLoading || !!emailError || !!passwordError}
             >
               {isLoading ? "Signing in..." : "Sign In"}
@@ -382,13 +389,6 @@ const Login = () => {
               Sign up
             </Link>
           </p>
-
-          <Link
-            to="/"
-            className="flex items-center justify-center w-full text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Back to home
-          </Link>
         </div>
       </div>
     </div>
