@@ -557,14 +557,26 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     console.log(`  📄 Blob Path: ${linkMapping.blob_path}`);
     console.log(`  📊 Access Count: ${linkMapping.access_count + 1}`);
     console.log(`  🖼️  Serving as: INLINE (not download)`);
+    console.log(`  📋 Request Headers:`, {
+      range: req.headers.range,
+      Range: req.headers['Range'],
+      allHeaders: Object.keys(req.headers)
+    });
 
     // Parse Range header if present (required for PDF preview)
-    const rangeHeader = req.headers.range;
+    // HTTP headers are case-insensitive, check both 'range' and 'Range'
+    let rangeHeader = req.headers.range || req.headers['Range'] || req.get('range') || req.get('Range');
+    
+    // Ensure rangeHeader is a string (can be string | string[] | undefined)
+    if (Array.isArray(rangeHeader)) {
+      rangeHeader = rangeHeader[0];
+    }
+    
     let start = 0;
     let end = fileSize ? fileSize - 1 : undefined;
     let isRangeRequest = false;
     
-    if (rangeHeader && fileSize) {
+    if (rangeHeader && typeof rangeHeader === 'string' && fileSize) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
       start = parseInt(parts[0], 10);
       end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -579,7 +591,12 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
         isPDF: mimeType === 'application/pdf'
       });
     } else {
-      console.log(`ℹ️  No Range header - full content request`);
+      console.log(`ℹ️  No Range header detected:`, {
+        'req.headers.range': req.headers.range,
+        'req.headers["Range"]': req.headers['Range'],
+        'fileSize': fileSize,
+        'hasRangeHeader': !!rangeHeader
+      });
     }
 
     // Fetch the file from Azure with Range support
