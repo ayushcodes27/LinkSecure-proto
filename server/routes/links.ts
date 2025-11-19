@@ -412,6 +412,18 @@ router.post('/verify/:short_code', async (req: Request, res: Response) => {
  * - Supports watermarking, email capture workflows
  * - CORS-enabled for frontend embedding
  */
+
+// Handle OPTIONS preflight for CORS
+router.options('/:short_code/content', (req: Request, res: Response) => {
+  const allowedOrigin = process.env.FRONTEND_URL || process.env.CLIENT_URL || '*';
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  res.status(204).end();
+});
+
 router.get('/:short_code/content', async (req: Request, res: Response) => {
   try {
     const { short_code } = req.params;
@@ -569,16 +581,23 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       res.setHeader('Content-Length', fileSize.toString());
     }
 
-    // Security headers
+    // CORS headers for frontend embedding (must be set first)
+    const allowedOrigin = process.env.FRONTEND_URL || process.env.CLIENT_URL || '*';
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+
+    // Security headers - allow iframe embedding from our domain
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // Allow iframe from same origin
+    res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin}`);
+    
+    // Cache control for secure content
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-
-    // CORS headers for frontend embedding
-    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     // Increment access count
     await LinkMapping.incrementAccessCount(short_code);
