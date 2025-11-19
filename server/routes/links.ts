@@ -558,16 +558,42 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     console.log(`  📊 Access Count: ${linkMapping.access_count + 1}`);
     console.log(`  🖼️  Serving as: INLINE (not download)`);
 
-    // Fetch the file from Azure as a stream
-    console.log(`📥 Fetching from Azure SAS URL...`);
-    const azureResponse = await axios.get(sasUrl, {
-      responseType: 'stream',
-      validateStatus: (status) => status < 500,
-      decompress: false, // Disable axios auto-decompression
-      maxRedirects: 5
-    });
+    // Parse Range header if present (required for PDF preview)
+    const rangeHeader = req.headers.range;
+    let start = 0;
+    let end = fileSize ? fileSize - 1 : undefined;
+    
+    if (rangeHeader && fileSize) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      start = parseInt(parts[0], 10);
+      end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      
+      console.log(`📊 Range request detected:`, {
+        rangeHeader,
+        start,
+        end,
+        totalSize: fileSize
+      });
+    }
 
-    if (azureResponse.status !== 200) {
+    // Fetch the file from Azure with Range support
+    console.log(`📥 Fetching from Azure SAS URL...`);
+    const axiosConfig: any = {
+      responseType: 'stream',
+      validateStatus: (status: number) => status < 500,
+      decompress: false,
+      maxRedirects: 5,
+      headers: {}
+    };
+
+    // Forward Range header to Azure if present
+    if (rangeHeader) {
+      axiosConfig.headers['Range'] = rangeHeader;
+    }
+
+    const azureResponse = await axios.get(sasUrl, axiosConfig);
+
+    if (azureResponse.status !== 200 && azureResponse.status !== 206) {
       console.error(`❌ Azure error ${azureResponse.status} for: ${linkMapping.blob_path}`);
       return res.status(azureResponse.status).json({
         success: false,
@@ -580,34 +606,56 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       status: azureResponse.status,
       contentType: azureResponse.headers['content-type'],
       contentLength: azureResponse.headers['content-length'],
+      contentRange: azureResponse.headers['content-range'],
       contentEncoding: azureResponse.headers['content-encoding']
     });
 
-    // Set response headers for INLINE viewing (not download)
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${originalFileName}"`);
-    
-    // Use Azure's content length if available, otherwise use our stored value
-    const actualContentLength = azureResponse.headers['content-length'] || fileSize;
-    if (actualContentLength) {
-      res.setHeader('Content-Length', actualContentLength.toString());
-    }
-
-    // CORS headers for frontend embedding (must be set first)
+    // CORS headers (must be set first)
     const allowedOrigin = process.env.FRONTEND_URL || process.env.CLIENT_URL || '*';
     res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Range');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges');
 
-    // Security headers - allow iframe embedding from our domain
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    // Note: X-Frame-Options is omitted because CSP frame-ancestors is more flexible and takes precedence
-    res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin} https://*.onrender.com`);
+    // Set response headers based on Azure response
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${originalFileName}"`);
+    res.setHeader('Accept-Ranges', 'bytes');
     
-    // Explicitly disable compression - file is already in final form
-    res.setHeader('Content-Encoding', 'identity');
+    // Handle Range response (206 Partial Content)
+    if (azureResponse.status === 206) {
+      res.status(206);
+      
+      // Forward Content-Range from Azure
+      if (azureResponse.headers['content-range']) {
+        res.setHeader('Content-Range', azureResponse.headers['content-range']);
+      } else if (rangeHeader && fileSize) {
+        // Construct Content-Range if Azure didn't provide it
+        const contentLength = end - start + 1;
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader('Content-Length', contentLength.toString());
+      }
+      
+      if (azureResponse.headers['content-length']) {
+        res.setHeader('Content-Length', azureResponse.headers['content-length']);
+      }
+      
+      console.log(`📊 Sending 206 Partial Content:`, {
+        contentRange: res.getHeader('Content-Range'),
+        contentLength: res.getHeader('Content-Length')
+      });
+    } else {
+      // Full content (200 OK)
+      const actualContentLength = azureResponse.headers['content-length'] || fileSize;
+      if (actualContentLength) {
+        res.setHeader('Content-Length', actualContentLength.toString());
+      }
+    }
+
+    // Security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin} https://*.onrender.com`);
     
     // Cache control for secure content
     res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
@@ -617,12 +665,10 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     // Increment access count
     await LinkMapping.incrementAccessCount(short_code);
 
-    console.log(`📺 Starting stream pipe: ${originalFileName} (${mimeType})`);
+    console.log(`📺 Starting stream: ${originalFileName} (${azureResponse.status === 206 ? 'PARTIAL' : 'FULL'})`);
 
-    // Track bytes transferred for debugging
+    // Track bytes transferred
     let bytesTransferred = 0;
-    
-    // Pipe the Azure stream to response with error handling
     const stream = azureResponse.data;
     
     stream.on('data', (chunk: Buffer) => {
@@ -633,7 +679,7 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       console.error('❌ Stream error:', {
         error: streamError.message,
         bytesTransferred,
-        expectedSize: actualContentLength
+        expectedSize: azureResponse.headers['content-length']
       });
       if (!res.headersSent) {
         res.status(500).end();
@@ -645,8 +691,8 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     stream.on('end', () => {
       console.log(`✅ Stream ended: ${short_code}`, {
         bytesTransferred,
-        expectedSize: actualContentLength,
-        complete: bytesTransferred == actualContentLength
+        expectedSize: azureResponse.headers['content-length'],
+        complete: bytesTransferred == azureResponse.headers['content-length']
       });
     });
 
