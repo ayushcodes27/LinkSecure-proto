@@ -595,8 +595,19 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
         'req.headers.range': req.headers.range,
         'req.headers["Range"]': req.headers['Range'],
         'fileSize': fileSize,
-        'hasRangeHeader': !!rangeHeader
+        'hasRangeHeader': !!rangeHeader,
+        'mimeType': mimeType,
+        'isPDF': mimeType === 'application/pdf'
       });
+      
+      // 🔧 WORKAROUND: If this is a PDF and no Range header (likely stripped by proxy),
+      // simulate a full range request to send 206 response that browsers expect
+      if (mimeType === 'application/pdf' && fileSize) {
+        console.log(`🔧 WORKAROUND: PDF without Range header - simulating bytes=0-${fileSize - 1} for browser compatibility`);
+        isRangeRequest = true;
+        start = 0;
+        end = fileSize - 1;
+      }
     }
 
     // Fetch the file from Azure with Range support
@@ -675,15 +686,19 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       });
     } else {
       // Full content (200 OK)
+      // Note: Even without Range header, we set Accept-Ranges to help browsers
       const actualContentLength = azureResponse.headers['content-length'] || fileSize;
       if (actualContentLength) {
         res.setHeader('Content-Length', actualContentLength.toString());
       }
       
-      console.log(`ℹ️  Sending 200 OK (full content):`, {
+      console.log(`ℹ️  Sending 200 OK (full content - Range header may have been stripped by proxy):`, {
         status: 200,
         contentLength: actualContentLength,
-        contentType: mimeType
+        contentType: mimeType,
+        acceptRanges: 'bytes',
+        contentDisposition: `inline; filename="${originalFileName}"`,
+        note: 'Accept-Ranges header set to help browser PDF viewer'
       });
     }
 
