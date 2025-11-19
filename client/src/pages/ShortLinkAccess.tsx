@@ -49,17 +49,23 @@ const ShortLinkAccess = () => {
       });
 
       if (response.ok) {
-        // Public file, no password needed - get file info from headers
-        const contentDisposition = response.headers.get('content-disposition');
-        const filename = contentDisposition?.split('filename=')[1]?.replace(/"/g, '') || 'File';
-        setFileName(filename);
+        // Check endpoint returns JSON with file info and password requirement
+        const data = await response.json();
+        setFileName(data.fileName || 'File');
         
-        const contentLength = response.headers.get('content-length');
-        if (contentLength) {
-          const sizeInMB = (parseInt(contentLength) / (1024 * 1024)).toFixed(2);
+        if (data.fileSize) {
+          const sizeInMB = (parseInt(data.fileSize) / (1024 * 1024)).toFixed(2);
           setFileSize(`${sizeInMB} MB`);
         }
         
+        // Check if password is required
+        if (data.requiresPassword) {
+          setRequiresPassword(true);
+          setLoading(false);
+          return;
+        }
+        
+        // No password needed, proceed to show content
         setLoading(false);
         return;
       }
