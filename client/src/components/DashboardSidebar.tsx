@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Shield, LayoutDashboard, FolderOpen, Link2, History, BarChart3, Trash2, Users } from "lucide-react";
+import { Shield, FolderOpen, History, BarChart3, Trash2, Users } from "lucide-react";
 
 interface DashboardSidebarProps {
   activeTab: string;
@@ -12,11 +12,9 @@ interface DashboardSidebarProps {
 const navigation = [
   { id: 'files', label: 'Files', icon: FolderOpen },
   { id: 'shared', label: 'Shared with Me', icon: Users },
-  { id: 'secure-links', label: 'Secure Links', icon: Link2 },
   { id: 'history', label: 'History', icon: History },
   { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'trash', label: 'Trash', icon: Trash2 },
-  { id: 'users', label: 'Team Members', icon: Users },
 ];
 
 export function DashboardSidebar({ activeTab, onTabChange, storageUsed = 0, storageLimit = 5 * 1024 * 1024 * 1024, storagePercentage = 0 }: DashboardSidebarProps) {
