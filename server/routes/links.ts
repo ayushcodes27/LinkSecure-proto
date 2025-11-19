@@ -492,6 +492,13 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     if (linkMapping.passwordHash) {
       const downloadToken = req.query.token as string;
 
+      console.log(`🔐 Password-protected link - Token check:`, {
+        short_code,
+        hasToken: !!downloadToken,
+        queryParams: req.query,
+        url: req.url
+      });
+
       if (!downloadToken) {
         console.warn(`⚠️  Password-protected content accessed without token: ${short_code}`);
         return res.status(401).json({

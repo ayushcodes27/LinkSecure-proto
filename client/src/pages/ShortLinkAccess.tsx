@@ -232,6 +232,13 @@ const ShortLinkAccess = () => {
     ? `${contentUrl}?token=${downloadToken}` 
     : contentUrl;
 
+  console.log('🔍 ShortLinkAccess - Rendering viewer:', {
+    shortCode,
+    hasToken: !!downloadToken,
+    finalFileUrl,
+    requiresPassword
+  });
+
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
       {/* Header bar with file info and download button */}
@@ -271,6 +278,7 @@ const ShortLinkAccess = () => {
       {/* File preview iframe */}
       <div className="flex-1 relative">
         <iframe
+          key={finalFileUrl} 
           src={finalFileUrl}
           className="absolute inset-0 w-full h-full border-0"
           title="File Preview"
