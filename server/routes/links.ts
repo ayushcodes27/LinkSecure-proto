@@ -378,6 +378,125 @@ router.post('/verify/:short_code', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/links/:short_code/verify-token
+ * Verify token and redirect to Azure SAS URL
+ * 
+ * This endpoint validates JWT token and returns 302 redirect to Azure Blob Storage.
+ * Designed for third-party viewers (Google Docs Viewer) that need direct file access.
+ * 
+ * Query Parameters:
+ * - token: JWT token for password-protected links (optional for public links)
+ * 
+ * Response:
+ * - 302 Found: Redirect to Azure SAS URL
+ * - 400 Bad Request: Invalid short code format
+ * - 401 Unauthorized: Missing or invalid token for password-protected link
+ * - 404 Not Found: Short code doesn't exist
+ * - 410 Gone: Link has expired
+ * - 500 Internal Server Error: Server error
+ */
+router.get('/:short_code/verify-token', async (req: Request, res: Response) => {
+  try {
+    const { short_code } = req.params;
+    const downloadToken = req.query.token as string;
+
+    console.log(`🔐 Verify-token request for: ${short_code}`);
+
+    // Validate short code format
+    if (!isValidShortCode(short_code)) {
+      console.warn(`⚠️  Invalid short code format: ${short_code}`);
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Invalid link format'
+      });
+    }
+
+    // Look up the link mapping
+    const linkMapping = await LinkMapping.findByShortCode(short_code);
+
+    if (!linkMapping) {
+      console.warn(`⚠️  Short code not found: ${short_code}`);
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Link not found'
+      });
+    }
+
+    // Check expiration
+    if (isExpired(linkMapping.expires_at)) {
+      console.warn(`⚠️  Expired link accessed: ${short_code}`);
+      return res.status(410).json({
+        success: false,
+        error: 'Gone',
+        message: 'This link has expired'
+      });
+    }
+
+    // Check if password-protected
+    if (linkMapping.passwordHash) {
+      if (!downloadToken) {
+        console.warn(`⚠️  Password-protected link accessed without token: ${short_code}`);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Password required'
+        });
+      }
+
+      // Verify JWT token
+      try {
+        const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+        const decoded = jwt.verify(downloadToken, JWT_SECRET) as { short_code: string };
+
+        if (decoded.short_code !== short_code) {
+          console.warn(`⚠️  Token mismatch: ${short_code}`);
+          return res.status(403).json({
+            success: false,
+            error: 'Forbidden',
+            message: 'Invalid token'
+          });
+        }
+
+        console.log(`🔓 Valid token for: ${short_code}`);
+      } catch (error) {
+        console.error(`❌ JWT verification failed for ${short_code}:`, error);
+        return res.status(401).json({
+          success: false,
+          error: 'Unauthorized',
+          message: 'Invalid or expired token'
+        });
+      }
+    }
+
+    // Generate Azure SAS URL
+    const azureSASService = getAzureSASService();
+    const azureUrl = await azureSASService.generateSASUrl(linkMapping.blob_path, { 
+      expiryMinutes: 1, // 1 minute validity
+      permissions: 'r'  // read-only
+    });
+
+    console.log(`✅ Redirecting to Azure SAS URL for: ${short_code}`);
+
+    // Increment access count
+    linkMapping.access_count = (linkMapping.access_count || 0) + 1;
+    await linkMapping.save();
+
+    // Return 302 redirect to Azure
+    return res.redirect(302, azureUrl);
+
+  } catch (error) {
+    console.error('❌ Error in verify-token:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : 'Failed to verify token'
+    });
+  }
+});
+
+/**
  * GET /s/:short_code
  * Proxy and stream Azure Blob Storage file to the user
  * 

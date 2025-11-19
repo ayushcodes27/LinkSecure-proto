@@ -237,9 +237,12 @@ const ShortLinkAccess = () => {
   }
 
   // Success! Show the file viewer with iframe
+  // Use verify-token endpoint for Google Docs Viewer - it redirects to Azure SAS URL
+  // This bypasses anti-bot/security blocks on our server
+  const verifyTokenUrl = `${backendUrl}/api/links/${shortCode}/verify-token`;
   const finalFileUrl = downloadToken 
-    ? `${contentUrl}?token=${downloadToken}` 
-    : contentUrl;
+    ? `${verifyTokenUrl}?token=${downloadToken}` 
+    : verifyTokenUrl;
 
   // For PDFs and documents, use Google Docs Viewer (more reliable than browser's native viewer)
   const isPDF = mimeType?.toLowerCase().includes('pdf');
@@ -254,6 +257,7 @@ const ShortLinkAccess = () => {
   let viewerUrl = finalFileUrl;
   if (useGoogleViewer) {
     // Google Docs Viewer with embedded mode
+    // Now points to verify-token endpoint which redirects to Azure
     const encodedUrl = encodeURIComponent(finalFileUrl);
     viewerUrl = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
   }
