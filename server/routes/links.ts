@@ -591,8 +591,8 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
 
     // Security headers - allow iframe embedding from our domain
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // Allow iframe from same origin
-    res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin}`);
+    // Note: X-Frame-Options is omitted because CSP frame-ancestors is more flexible and takes precedence
+    res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin} https://*.onrender.com`);
     
     // Cache control for secure content
     res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');

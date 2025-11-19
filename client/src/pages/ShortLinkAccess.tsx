@@ -241,7 +241,8 @@ const ShortLinkAccess = () => {
   console.log('🔍 ShortLinkAccess - Rendering viewer:', {
     shortCode,
     hasToken: !!downloadToken,
-    finalFileUrl,
+    tokenLength: downloadToken?.length,
+    finalFileUrl: finalFileUrl.substring(0, 100) + '...' + finalFileUrl.substring(finalFileUrl.length - 50),
     requiresPassword
   });
 
