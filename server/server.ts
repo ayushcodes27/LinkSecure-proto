@@ -13,7 +13,14 @@ import googleAuthRoutes from "./routes/googleAuth";
 import userRoutes from "./routes/user";
 import notificationRoutes from "./routes/notifications";
 import linkRoutes from "./routes/links";
+import fs from "fs";
 
+// Load .env.local first (if exists) for local development, then .env
+const envLocalPath = path.join(__dirname, '.env.local');
+if (fs.existsSync(envLocalPath)) {
+  dotenv.config({ path: envLocalPath });
+  console.log('🔧 Loaded .env.local for local development');
+}
 dotenv.config();
 
 const app = express();

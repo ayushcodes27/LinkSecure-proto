@@ -559,9 +559,12 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     console.log(`  🖼️  Serving as: INLINE (not download)`);
 
     // Fetch the file from Azure as a stream
+    console.log(`📥 Fetching from Azure SAS URL...`);
     const azureResponse = await axios.get(sasUrl, {
       responseType: 'stream',
-      validateStatus: (status) => status < 500
+      validateStatus: (status) => status < 500,
+      decompress: false, // Disable axios auto-decompression
+      maxRedirects: 5
     });
 
     if (azureResponse.status !== 200) {
@@ -573,12 +576,21 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       });
     }
 
+    console.log(`✅ Azure response received:`, {
+      status: azureResponse.status,
+      contentType: azureResponse.headers['content-type'],
+      contentLength: azureResponse.headers['content-length'],
+      contentEncoding: azureResponse.headers['content-encoding']
+    });
+
     // Set response headers for INLINE viewing (not download)
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${originalFileName}"`);
     
-    if (fileSize) {
-      res.setHeader('Content-Length', fileSize.toString());
+    // Use Azure's content length if available, otherwise use our stored value
+    const actualContentLength = azureResponse.headers['content-length'] || fileSize;
+    if (actualContentLength) {
+      res.setHeader('Content-Length', actualContentLength.toString());
     }
 
     // CORS headers for frontend embedding (must be set first)
@@ -594,6 +606,9 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     // Note: X-Frame-Options is omitted because CSP frame-ancestors is more flexible and takes precedence
     res.setHeader('Content-Security-Policy', `frame-ancestors 'self' ${allowedOrigin} https://*.onrender.com`);
     
+    // Explicitly disable compression - file is already in final form
+    res.setHeader('Content-Encoding', 'identity');
+    
     // Cache control for secure content
     res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -602,22 +617,49 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     // Increment access count
     await LinkMapping.incrementAccessCount(short_code);
 
-    console.log(`📺 Streaming inline: ${originalFileName} (${mimeType})`);
+    console.log(`📺 Starting stream pipe: ${originalFileName} (${mimeType})`);
 
-    // Pipe the Azure stream to response
-    azureResponse.data.pipe(res);
+    // Track bytes transferred for debugging
+    let bytesTransferred = 0;
+    
+    // Pipe the Azure stream to response with error handling
+    const stream = azureResponse.data;
+    
+    stream.on('data', (chunk: Buffer) => {
+      bytesTransferred += chunk.length;
+    });
 
-    // Error handlers
-    azureResponse.data.on('error', (streamError: Error) => {
-      console.error('❌ Stream error:', streamError);
+    stream.on('error', (streamError: Error) => {
+      console.error('❌ Stream error:', {
+        error: streamError.message,
+        bytesTransferred,
+        expectedSize: actualContentLength
+      });
       if (!res.headersSent) {
         res.status(500).end();
+      } else {
+        res.end();
       }
     });
 
-    res.on('finish', () => {
-      console.log(`✅ Content streamed successfully: ${short_code}`);
+    stream.on('end', () => {
+      console.log(`✅ Stream ended: ${short_code}`, {
+        bytesTransferred,
+        expectedSize: actualContentLength,
+        complete: bytesTransferred == actualContentLength
+      });
     });
+
+    res.on('finish', () => {
+      console.log(`✅ Response finished: ${short_code}`);
+    });
+
+    res.on('error', (resError: Error) => {
+      console.error('❌ Response error:', resError);
+    });
+
+    // Pipe the stream
+    stream.pipe(res);
 
   } catch (error) {
     console.error('❌ Error streaming content:', error);
