@@ -562,18 +562,24 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     const rangeHeader = req.headers.range;
     let start = 0;
     let end = fileSize ? fileSize - 1 : undefined;
+    let isRangeRequest = false;
     
     if (rangeHeader && fileSize) {
       const parts = rangeHeader.replace(/bytes=/, '').split('-');
       start = parseInt(parts[0], 10);
       end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      isRangeRequest = true;
       
-      console.log(`📊 Range request detected:`, {
+      console.log(`📊 🛑 CRITICAL: Range request detected for PDF preview:`, {
         rangeHeader,
         start,
         end,
-        totalSize: fileSize
+        totalSize: fileSize,
+        mimeType,
+        isPDF: mimeType === 'application/pdf'
       });
+    } else {
+      console.log(`ℹ️  No Range header - full content request`);
     }
 
     // Fetch the file from Azure with Range support
@@ -587,8 +593,9 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     };
 
     // Forward Range header to Azure if present
-    if (rangeHeader) {
+    if (isRangeRequest) {
       axiosConfig.headers['Range'] = rangeHeader;
+      console.log(`➡️  Forwarding Range header to Azure: ${rangeHeader}`);
     }
 
     const azureResponse = await axios.get(sasUrl, axiosConfig);
@@ -618,32 +625,36 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Content-Type, Accept-Ranges');
 
-    // Set response headers based on Azure response
+    // Set response headers
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${originalFileName}"`);
     res.setHeader('Accept-Ranges', 'bytes');
     
-    // Handle Range response (206 Partial Content)
-    if (azureResponse.status === 206) {
+    // 🛑 CRITICAL: Handle Range response correctly
+    if (isRangeRequest && fileSize) {
+      // ALWAYS return 206 for Range requests, even if Azure returned 200
       res.status(206);
       
-      // Forward Content-Range from Azure
+      // Calculate content length for this range
+      const contentLength = end! - start + 1;
+      
+      // Set Content-Range header
       if (azureResponse.headers['content-range']) {
+        // Use Azure's Content-Range if available
         res.setHeader('Content-Range', azureResponse.headers['content-range']);
-      } else if (rangeHeader && fileSize) {
-        // Construct Content-Range if Azure didn't provide it
-        const contentLength = end - start + 1;
+        res.setHeader('Content-Length', azureResponse.headers['content-length'] || contentLength.toString());
+      } else {
+        // Construct Content-Range ourselves
         res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
         res.setHeader('Content-Length', contentLength.toString());
       }
       
-      if (azureResponse.headers['content-length']) {
-        res.setHeader('Content-Length', azureResponse.headers['content-length']);
-      }
-      
-      console.log(`📊 Sending 206 Partial Content:`, {
+      console.log(`🛑 CRITICAL: Sending 206 Partial Content:`, {
+        status: 206,
         contentRange: res.getHeader('Content-Range'),
-        contentLength: res.getHeader('Content-Length')
+        contentLength: res.getHeader('Content-Length'),
+        contentType: mimeType,
+        isPDF: mimeType === 'application/pdf'
       });
     } else {
       // Full content (200 OK)
@@ -651,6 +662,12 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       if (actualContentLength) {
         res.setHeader('Content-Length', actualContentLength.toString());
       }
+      
+      console.log(`ℹ️  Sending 200 OK (full content):`, {
+        status: 200,
+        contentLength: actualContentLength,
+        contentType: mimeType
+      });
     }
 
     // Security headers
