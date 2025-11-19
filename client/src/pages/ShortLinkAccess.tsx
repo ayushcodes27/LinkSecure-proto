@@ -238,13 +238,42 @@ const ShortLinkAccess = () => {
     ? `${contentUrl}?token=${downloadToken}` 
     : contentUrl;
 
+  // For PDFs and documents, use Google Docs Viewer (more reliable than browser's native viewer)
+  const isPDF = mimeType?.toLowerCase().includes('pdf');
+  const isDocument = mimeType?.toLowerCase().includes('pdf') || 
+                     mimeType?.toLowerCase().includes('doc') || 
+                     mimeType?.toLowerCase().includes('ppt') || 
+                     mimeType?.toLowerCase().includes('xls');
+  
+  // Use Google Docs Viewer for documents - it handles authentication better
+  const useGoogleViewer = isDocument;
+  
+  let viewerUrl = finalFileUrl;
+  if (useGoogleViewer) {
+    // Google Docs Viewer with embedded mode
+    const encodedUrl = encodeURIComponent(finalFileUrl);
+    viewerUrl = `https://docs.google.com/gview?url=${encodedUrl}&embedded=true`;
+  }
+
   console.log('🔍 ShortLinkAccess - Rendering viewer:', {
     shortCode,
     hasToken: !!downloadToken,
     tokenLength: downloadToken?.length,
-    finalFileUrl: finalFileUrl.substring(0, 100) + '...' + finalFileUrl.substring(finalFileUrl.length - 50),
+    isPDF,
+    isDocument,
+    useGoogleViewer,
+    mimeType,
+    finalFileUrl: finalFileUrl,
+    encodedFileUrl: encodeURIComponent(finalFileUrl),
+    viewerUrl: viewerUrl.substring(0, 150) + '...',
     requiresPassword
   });
+  
+  if (useGoogleViewer) {
+    console.log('📄 Document detected - using Google Docs Viewer');
+    console.log('🔗 Final file URL:', finalFileUrl);
+    console.log('🔗 Google Viewer URL:', viewerUrl);
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
@@ -285,8 +314,8 @@ const ShortLinkAccess = () => {
       {/* File preview iframe */}
       <div className="flex-1 relative">
         <iframe
-          key={finalFileUrl} 
-          src={finalFileUrl}
+          key={viewerUrl} 
+          src={viewerUrl}
           className="absolute inset-0 w-full h-full border-0"
           title="File Preview"
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
