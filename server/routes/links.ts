@@ -471,7 +471,24 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
       });
     }
 
-    // Check if link is password-protected
+    // Extract file metadata
+    const originalFileName = linkMapping.metadata?.original_file_name || 'file';
+    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
+    const fileSize = linkMapping.metadata?.file_size;
+
+    // If this is just a check request (not actual content fetch), return metadata only
+    if (req.query.check === 'true') {
+      console.log(`✅ Access check passed for: ${short_code}`);
+      return res.status(200).json({
+        success: true,
+        fileName: originalFileName,
+        mimeType,
+        fileSize,
+        requiresPassword: !!linkMapping.passwordHash
+      });
+    }
+
+    // Check if link is password-protected (only for actual content fetch)
     if (linkMapping.passwordHash) {
       const downloadToken = req.query.token as string;
 
@@ -482,7 +499,7 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
           error: 'Unauthorized',
           message: 'Password required',
           requiresPassword: true,
-          fileName: linkMapping.metadata?.original_file_name || 'Protected File'
+          fileName: originalFileName
         });
       }
 
@@ -510,23 +527,6 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
           requiresPassword: true
         });
       }
-    }
-
-    // Extract file metadata
-    const originalFileName = linkMapping.metadata?.original_file_name || 'file';
-    const mimeType = linkMapping.metadata?.mime_type || 'application/octet-stream';
-    const fileSize = linkMapping.metadata?.file_size;
-
-    // If this is just a check request (not actual content fetch), return metadata only
-    if (req.query.check === 'true') {
-      console.log(`✅ Access check passed for: ${short_code}`);
-      return res.status(200).json({
-        success: true,
-        fileName: originalFileName,
-        mimeType,
-        fileSize,
-        requiresPassword: false
-      });
     }
 
     // Generate Azure SAS URL
