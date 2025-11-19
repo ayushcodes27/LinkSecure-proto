@@ -597,17 +597,12 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
         'fileSize': fileSize,
         'hasRangeHeader': !!rangeHeader,
         'mimeType': mimeType,
-        'isPDF': mimeType === 'application/pdf'
+        'isPDF': mimeType === 'application/pdf',
+        'note': 'Will send 200 OK with full content for PDF.js viewer'
       });
       
-      // 🔧 WORKAROUND: If this is a PDF and no Range header (likely stripped by proxy),
-      // simulate a full range request to send 206 response that browsers expect
-      if (mimeType === 'application/pdf' && fileSize) {
-        console.log(`🔧 WORKAROUND: PDF without Range header - simulating bytes=0-${fileSize - 1} for browser compatibility`);
-        isRangeRequest = true;
-        start = 0;
-        end = fileSize - 1;
-      }
+      // ✅ No workaround needed - PDF.js viewer prefers clean 200 OK full stream
+      // When Range header is missing, we send the entire file with 200 OK
     }
 
     // Fetch the file from Azure with Range support
@@ -685,20 +680,25 @@ router.get('/:short_code/content', async (req: Request, res: Response) => {
         isPDF: mimeType === 'application/pdf'
       });
     } else {
-      // Full content (200 OK)
-      // Note: Even without Range header, we set Accept-Ranges to help browsers
+      // ✅ Full content (200 OK) - Correct for PDF.js viewer
+      // Explicitly set 200 status (default, but being explicit)
+      res.status(200);
+      
       const actualContentLength = azureResponse.headers['content-length'] || fileSize;
       if (actualContentLength) {
         res.setHeader('Content-Length', actualContentLength.toString());
       }
       
-      console.log(`ℹ️  Sending 200 OK (full content - Range header may have been stripped by proxy):`, {
+      // ✅ Do NOT set Content-Range for 200 OK - it's only for 206 responses
+      // Accept-Ranges is already set above to advertise range support
+      
+      console.log(`✅ Sending 200 OK (full content for PDF.js):`, {
         status: 200,
         contentLength: actualContentLength,
         contentType: mimeType,
         acceptRanges: 'bytes',
         contentDisposition: `inline; filename="${originalFileName}"`,
-        note: 'Accept-Ranges header set to help browser PDF viewer'
+        note: 'Clean 200 OK response - perfect for PDF.js viewer'
       });
     }
 
