@@ -52,6 +52,9 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
+// Serve PDF viewer HTML (for custom PDF.js viewer)
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Health check
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({ ok: true });
