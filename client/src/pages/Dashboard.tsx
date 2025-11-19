@@ -38,7 +38,7 @@ import SecureLinkModal from "@/components/SecureLinkModal";
 import FilePreviewModal from "@/components/FilePreviewModal";
 import { ShareModal } from "@/components/ShareModalTabbed";
 import { FileAnalyticsModal } from "@/components/FileAnalyticsModal";
-import { AnalyticsChart } from "@/components/AnalyticsChart";
+import { AnalyticsChart } from "@/components/AnalyticsChartNew";
 import { UserManagement } from "@/components/UserManagement";
 import { ProfileMenu } from "@/components/ProfileMenu";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -669,20 +669,16 @@ const Dashboard = () => {
               <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
                 {activeTab === 'files' && 'Files'}
                 {activeTab === 'shared' && 'Shared with Me'}
-                {activeTab === 'secure-links' && 'Secure Links'}
                 {activeTab === 'history' && 'Activity History'}
                 {activeTab === 'analytics' && 'Analytics'}
                 {activeTab === 'trash' && 'Trash'}
-                {activeTab === 'users' && 'Team Members'}
               </h1>
               <p className="text-muted-foreground text-base">
                 {activeTab === 'files' && 'Manage and organize your files'}
                 {activeTab === 'shared' && 'Access files shared with you by other users'}
-                {activeTab === 'secure-links' && 'Monitor and control shared links'}
                 {activeTab === 'history' && 'Track all file activities'}
                 {activeTab === 'analytics' && 'View detailed insights and metrics'}
                 {activeTab === 'trash' && 'Recover or permanently delete files'}
-                {activeTab === 'users' && 'Manage team access and permissions'}
               </p>
             </div>
             {activeTab === 'files' && (
@@ -695,52 +691,6 @@ const Dashboard = () => {
               </Button>
             )}
           </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {statsLoading ? (
-            <>
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="border-0 shadow-sm">
-                  <CardContent className="p-6">
-                    <SkeletonLoader variant="card" />
-                  </CardContent>
-                </Card>
-              ))}
-            </>
-          ) : (
-            <>
-              <MetricCard
-                title="Total Files"
-                value={files.length}
-                change="+12% from last month"
-                icon={FolderOpen}
-                trend="up"
-              />
-              <MetricCard
-                title="Total Views"
-                value={files.reduce((acc, file) => acc + file.downloadCount, 0)}
-                change="+8% from last month"
-                icon={Eye}
-                trend="up"
-              />
-              <MetricCard
-                title="Active Shares"
-                value={secureLinks.filter(link => link.isActive && new Date(link.expiresAt) > new Date()).length}
-                change="+15% from last month"
-                icon={Share2}
-                trend="up"
-              />
-              <MetricCard
-                title="Storage Used"
-                value={`${(storageStats.used / (1024 * 1024 * 1024)).toFixed(2)} GB`}
-                change={`${storageStats.percentage.toFixed(1)}% of ${(storageStats.limit / (1024 * 1024 * 1024)).toFixed(0)} GB`}
-                icon={BarChart3}
-                trend={storageStats.percentage > 80 ? 'down' : storageStats.percentage > 50 ? 'neutral' : 'up'}
-              />
-            </>
-          )}
         </div>
 
         {/* Main Content */}
@@ -1163,111 +1113,6 @@ const Dashboard = () => {
             </Card>
           )}
 
-          {activeTab === 'secure-links' && (
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="border-b bg-muted/20">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Secure Links</CardTitle>
-                    <CardDescription className="text-sm mt-1">
-                      Manage time-limited secure file sharing links
-                    </CardDescription>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={fetchSecureLinks}
-                    disabled={linksLoading}
-                    className="h-9"
-                  >
-                    {linksLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-                    Refresh
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                {linksLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="p-5 border rounded-xl bg-card">
-                        <SkeletonLoader variant="text" lines={2} />
-                      </div>
-                    ))}
-                  </div>
-                ) : secureLinks.length === 0 ? (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <Shield className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg font-medium mb-1">No secure links found</p>
-                    <p className="text-sm">Generate secure links for your files to share them safely</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {secureLinks.map((link, index) => {
-                      const isExpired = new Date(link.expiresAt) < new Date();
-                      const isActive = link.isActive && !isExpired;
-                      
-                      return (
-                        <div
-                          key={link.linkId}
-                          className="group flex items-center justify-between p-5 border rounded-xl hover:border-primary/30 hover:shadow-md transition-all duration-200 bg-card"
-                        >
-                          <div className="flex items-center space-x-4 flex-1 min-w-0">
-                            <div className={`flex-shrink-0 p-3 rounded-lg transition-colors ${
-                              isActive 
-                                ? 'bg-primary/5 text-primary group-hover:bg-primary/10' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              <Shield className="h-5 w-5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-foreground truncate">{link.originalName}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-xs text-muted-foreground">
-                                  Created {formatDate(link.createdAt)}
-                                </span>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {link.accessCount} {link.accessCount === 1 ? 'view' : 'views'}
-                                </span>
-                                <span className="text-xs text-muted-foreground">•</span>
-                                <span className="text-xs text-muted-foreground">
-                                  Expires {formatDate(link.expiresAt)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-3 ml-4">
-                            {isExpired ? (
-                              <Badge variant="destructive" className="text-xs px-2 py-1">
-                                Expired
-                              </Badge>
-                            ) : (
-                              <Badge variant={isActive ? "default" : "secondary"} className="text-xs px-2 py-1">
-                                {isActive ? "Active" : "Inactive"}
-                              </Badge>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => {
-                                setSelectedFileForSecureLink({ fileId: link.fileId, fileName: link.originalName });
-                                setShowSecureLinkModal(true);
-                              }}
-                              title="Manage Link"
-                            >
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {activeTab === 'history' && (
             <Card className="border-0 shadow-sm">
               <CardHeader className="border-b bg-muted/20">
@@ -1372,10 +1217,6 @@ const Dashboard = () => {
 
           {activeTab === 'analytics' && (
             <AnalyticsChart />
-          )}
-
-          {activeTab === 'users' && (
-            <UserManagement fileId={selectedFiles.length === 1 ? selectedFiles[0] : undefined} />
           )}
         </div>
       </div>
