@@ -26,6 +26,7 @@ const ShortLinkAccess = () => {
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const [fileSize, setFileSize] = useState<string>("");
+  const [mimeType, setMimeType] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
 
   const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -52,6 +53,7 @@ const ShortLinkAccess = () => {
         // Check endpoint returns JSON with file info and password requirement
         const data = await response.json();
         setFileName(data.fileName || 'File');
+        setMimeType(data.mimeType || '');
         
         if (data.fileSize) {
           const sizeInMB = (parseInt(data.fileSize) / (1024 * 1024)).toFixed(2);
@@ -76,6 +78,7 @@ const ShortLinkAccess = () => {
           const data = await response.json();
           setRequiresPassword(true);
           setFileName(data.fileName || 'Protected File');
+          setMimeType(data.mimeType || '');
           setLoading(false);
           return;
         } catch (e) {
