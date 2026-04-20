@@ -1,5 +1,5 @@
 // Quick test script for password-protected links
-// Run with: node test-password-protection.js
+// Run with: node scripts/test-password-protection.js
 
 const axios = require('axios');
 
