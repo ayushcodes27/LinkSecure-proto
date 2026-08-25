@@ -36,7 +36,6 @@ const LinkMappingSchema = new Schema<ILinkMapping>(
       type: String,
       required: true,
       unique: true,
-      index: true,
       trim: true,
       minlength: 8,
       maxlength: 8,
@@ -109,7 +108,6 @@ const LinkMappingSchema = new Schema<ILinkMapping>(
 );
 
 // Index for efficient queries
-LinkMappingSchema.index({ short_code: 1 });
 LinkMappingSchema.index({ owner_id: 1, created_at: -1 });
 LinkMappingSchema.index({ expires_at: 1, is_active: 1 });
 

@@ -166,12 +166,18 @@ if (!MONGO_URI) {
 async function start() {
   try {
     await mongoose.connect(MONGO_URI!);
-    console.log("MongoDB connected");
+    console.log("MongoDB connected successfully");
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to start server:", error);
+    if (error?.code === 'ENOTFOUND' || error?.syscall === 'querySrv' || error?.message?.includes('querySrv')) {
+      console.error("\n❌ MongoDB Connection Error (querySrv ENOTFOUND):");
+      console.error(" 1. Check your MONGO_URI in the Render dashboard / .env file.");
+      console.error(" 2. Ensure Network Access in MongoDB Atlas is set to 0.0.0.0/0 (Allow access from anywhere).");
+      console.error(" 3. Verify your MongoDB cluster URL is active and correctly formatted.\n");
+    }
     process.exit(1);
   }
 }

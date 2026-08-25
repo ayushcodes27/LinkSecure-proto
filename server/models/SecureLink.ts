@@ -175,7 +175,6 @@ SecureLinkSchema.methods.recordAccess = function(ipAddress?: string, userAgent?:
 };
 
 // Indexes for efficient queries
-SecureLinkSchema.index({ secureToken: 1 });
 SecureLinkSchema.index({ fileId: 1, createdBy: 1 });
 SecureLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 SecureLinkSchema.index({ isActive: 1, expiresAt: 1 });
