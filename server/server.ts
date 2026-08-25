@@ -13,6 +13,7 @@ import googleAuthRoutes from "./routes/googleAuth";
 import userRoutes from "./routes/user";
 import notificationRoutes from "./routes/notifications";
 import linkRoutes from "./routes/links";
+import { activeRequestsMiddleware, metricsHandler } from "./routes/metrics";
 import fs from "fs";
 
 // Load .env.local first (if exists) for local development, then .env
@@ -24,6 +25,9 @@ if (fs.existsSync(envLocalPath)) {
 dotenv.config();
 
 const app = express();
+
+// Active Requests Tracker Middleware (for PulseCheck observability)
+app.use(activeRequestsMiddleware);
 
 // Middlewares
 const allowedOrigins = [
@@ -55,10 +59,11 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 // Serve PDF viewer HTML (for custom PDF.js viewer)
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Health check
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.json({ ok: true });
-});
+// Health & Metrics telemetry routes (PulseCheck & Render)
+app.get("/api/health", metricsHandler);
+app.get("/metrics", metricsHandler);
+app.get("/api/metrics", metricsHandler);
+
 
 // Routes
 app.use("/api/auth", authRoutes);
